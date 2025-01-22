@@ -6,11 +6,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 
-builder.Services.AddScoped<GetHttpClient>();
-builder.Services.AddScoped<IExternalContainer, ExternalContainerService>();
-builder.Services.AddScoped<IExternalEmission, ExternalEmissionService>();
-builder.Services.AddScoped<IExternalProduct, ExternalProductService>();
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

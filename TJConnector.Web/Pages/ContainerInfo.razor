@@ -1,8 +1,8 @@
 ﻿@page "/ContainerInfo"
 
-@using TJ8.TJProcessing.Model.ExternalResponses.Container
+@* @using TJ8.TJProcessing.Model.ExternalResponses.Container
 @inject WeatherApiClient WeatherApi
-@inject TJ8.TJProcessing.Services.Contracts.IExternalContainer containerService
+@inject TJ8.TJProcessing.Services.Contracts.IExternalContainer containerService 
 
 <PageTitle>Container Info</PageTitle>
 
@@ -24,4 +24,4 @@
         if (data.Content is not null)
             containerInfo = data.Content; 
     } 
-}
+}*@
