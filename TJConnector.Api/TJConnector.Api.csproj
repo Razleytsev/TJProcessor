@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\SharedLibrary\TJConnector.SharedLibrary.csproj" />
     <ProjectReference Include="..\TJConnector.Postgres\TJConnector.Postgres.csproj" />
     <ProjectReference Include="..\TJConnector.StateSystem\TJConnector.StateSystem.csproj" />
   </ItemGroup>

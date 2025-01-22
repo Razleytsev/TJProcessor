@@ -1,4 +1,6 @@
-﻿namespace TJConnector.Postgres.Entities
+﻿using System.ComponentModel.DataAnnotations.Schema;
+
+namespace TJConnector.Postgres.Entities
 {
     public class CodeOrderContent
     {
@@ -6,7 +8,7 @@
 
         public int CodeOrderId { get; set; }
         public CodeOrder? CodeOrder { get; set; }
-
+        public string[] OrderContent { get; set; } = [];
         public DateTimeOffset RecordDate { get; set; }
         public DownloadHistory? DownloadHistory { get; set; }
     }

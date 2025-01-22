@@ -1,0 +1,106 @@
+﻿@page "/containers"
+@using System.Net.Http.Headers
+@using System.Text
+@using System.Text.Json
+
+@inject HttpClient Http
+
+@functions {
+    private List<Item> Items = new();
+    private string SortColumn = "Gtin";
+    private bool SortAscending = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await FetchData();
+    }
+
+    private async Task FetchData()
+    {
+        var username = "PEpk1O-cQs6cAouT2DxMvQ-0:mar_Z4i9cHGkTFuEtQRh/0n5pg_Z4i9cHGkTFuEtQRh/0n5pg_SgR8u0vNhtxZgYGlwRmod/0Oj5LVcc4IcNCs5CpQIeRuJIPZoLhcswzUg0DELEwPxrvF9i1YrvqDJ3621JbhbA";
+
+
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}")));
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://pub-api.mark.tj:5230/container/report/operation/find");
+        var content = new StringContent("{\r\n    \"filters\":\r\n    {\r\n        \"factoryUuid\": [\"326e5c13-4280-4078-be01-ebed9d73716a\"]\r\n    },\r\n    \"limit\": 50,\r\n    \"offset\": 0,\r\n    \"order\": \r\n    {\r\n        \"createdAt\":\r\n        {\r\n            \"dir\" : \"DESC\"\r\n        }\r\n    }\r\n}", null, "application/json");
+        request.Content = content;
+        var response = await client.SendAsync(request);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var apiResponse = JsonSerializer.Deserialize<ApiResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            if (apiResponse != null)
+            {
+                Items = apiResponse.Items;
+                SortItems();
+            }
+        }
+    }
+
+    private void SortItems()
+    {
+        Items = SortAscending
+            ? Items.OrderBy(item => item.GetType().GetProperty(SortColumn)?.GetValue(item, null)).ToList()
+            : Items.OrderByDescending(item => item.GetType().GetProperty(SortColumn)?.GetValue(item, null)).ToList();
+    }
+
+    private void ChangeSortColumn(string column)
+    {
+        if (SortColumn == column)
+        {
+            SortAscending = !SortAscending;
+        }
+        else
+        {
+            SortColumn = column;
+            SortAscending = true;
+        }
+        SortItems();
+    }
+
+    public class ApiResponse
+    {
+        public List<Item> Items { get; set; } = new();
+        public int Total { get; set; }
+    }
+
+    public class Item
+    {
+        public string uuid { get; set; }
+        public string containerCode { get; set; }
+        public int containerType { get; set; }
+        public string locationName { get; set; }
+        public string finishedAt { get; set; }
+        public int codesCount { get; set; }
+    }
+}
+
+<h3>Orders</h3>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th @onclick="() => ChangeSortColumn(nameof(Item.containerCode))">Code</th>
+            <th @onclick="() => ChangeSortColumn(nameof(Item.uuid))">Uuid</th>
+            <th @onclick="() => ChangeSortColumn(nameof(Item.containerType))">Type</th>
+            <th @onclick="() => ChangeSortColumn(nameof(Item.codesCount))">Count</th>
+            <th @onclick="() => ChangeSortColumn(nameof(Item.finishedAt))">Date</th>
+            <th @onclick="() => ChangeSortColumn(nameof(Item.locationName))">Location</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Items)
+        {
+            <tr>
+                <td>@item.containerCode</td>
+                <td>@item.uuid</td>
+                <td>@item.containerType</td>
+                <td>@item.codesCount</td>
+                <td>@item.finishedAt</td>
+                <td>@item.locationName</td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,58 @@
+﻿@page "/emission"
+@using System.Net.Http.Headers
+@using System.Text
+@using System.Text.Json
+
+@inject HttpClient Http
+
+@functions {
+    private IEnumerable<Item> Items = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        Items = await FetchData();
+    }
+
+
+    private async Task<IEnumerable<Item>> FetchData()
+    {
+        var username = "PEpk1O-cQs6cAouT2DxMvQ-0:mar_Z4i9cHGkTFuEtQRh/0n5pg_Z4i9cHGkTFuEtQRh/0n5pg_SgR8u0vNhtxZgYGlwRmod/0Oj5LVcc4IcNCs5CpQIeRuJIPZoLhcswzUg0DELEwPxrvF9i1YrvqDJ3621JbhbA";
+         
+        var client = new HttpClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}")));
+        var request = new HttpRequestMessage(HttpMethod.Post, "https://pub-api.mark.tj:5230/markingCode/emission/find");
+        var content = new StringContent("{\r\n    \"filters\": \r\n        {\r\n            \"factoryUuid\": [\"326e5c13-4280-4078-be01-ebed9d73716a\"]\r\n        },\r\n    \"limit\": 20,\r\n    \"offset\": 0\r\n}", null, "application/json");
+        request.Content = content;
+        var response = await client.SendAsync(request);
+
+        if (!response.IsSuccessStatusCode)
+            return [];
+
+        var responseContent = await response.Content.ReadAsStringAsync();
+        var apiResponse = JsonSerializer.Deserialize<ApiResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+         
+        return apiResponse?.Items ?? [];
+    }
+
+
+
+
+
+    public class ApiResponse
+    {
+        public List<Item> Items { get; set; } = new();
+        public int Total { get; set; }
+    }
+
+    public class Item
+    {
+        public string id { get; set; }
+        public string uuid { get; set; }
+        public string gtin { get; set; }
+        public int status { get; set; }
+        public string finishedAt { get; set; }
+        public int codesCount { get; set; }
+    }
+}
+
+<CustomTable Data="Items" />

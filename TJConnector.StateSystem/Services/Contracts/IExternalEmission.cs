@@ -12,7 +12,7 @@ namespace TJConnector.StateSystem.Services.Contracts
         Task<CustomResult<ProcessResponse>> ProcessCodeEmission(ProcessDocument body);
         Task<CustomResult<EmissionCodesResponse>> GetCodesFromEmission(ProcessDocument body);
         Task<CustomResult<EmissionInfoResponse>> GetEmissionInfo(Guid uuid);
-        Task<CustomResult<EmissionListResponse>> GetEmissionList();
+        Task<CustomResult<EmissionListResponse>> GetEmissionList(ListRequestRequest listRequestBody);
         Task<CustomResult<DocumentCreateResponse>> CreateCodeApplication(ApplicationCreateRequest body);
         Task<CustomResult<ProcessResponse>> ProcessCodeApplication(ProcessDocument body);
     }

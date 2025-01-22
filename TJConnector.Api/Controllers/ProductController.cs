@@ -68,6 +68,20 @@ namespace TJConnector.Api.Controllers
 
             var missingProducts = externalProducts.Content.items.Where(x=> !_context.Products.Any(z => z.ExternalUid == x.uuid)).ToList();
 
+            List<Product> newProducts = new List<Product>();
+
+            foreach (var missingProduct in missingProducts)
+                newProducts.Add(new Product
+                {
+                    ExternalUid = missingProduct.uuid,
+                    Gtin = missingProduct.gtin,
+                    Type = missingProduct.type,
+                    Name = missingProduct.name,
+                });
+
+            if(newProducts.Count > 0)
+                await _context.Products.AddRangeAsync(newProducts);
+
             try
             {
                 await _context.SaveChangesAsync();
@@ -77,7 +91,7 @@ namespace TJConnector.Api.Controllers
                 return BadRequest(ex.Message);
             }
 
-            return Ok();
+            return Ok(missingProducts.Count > 0 ? $"{missingProducts.Count} products added" : "No new products");
         }
 
     }

@@ -10,11 +10,10 @@ internal sealed class CodeOrderConfiguration : IEntityTypeConfiguration<CodeOrde
     public void Configure(EntityTypeBuilder<CodeOrder> builder)
     {
         builder.HasKey(o => o.Id);
-        builder.HasOne<Product>().WithMany().HasForeignKey(o => o.ProductId);
-        builder.Property(o => o.StatusHistory)
+        builder.Property(o => o.StatusHistoryJson)
             .HasConversion(
                       v => JsonConvert.SerializeObject(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }),
-                      v => JsonConvert.DeserializeObject<StatusHistory>(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore })
+                      v => JsonConvert.DeserializeObject<StatusHistory[]>(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }) ?? new StatusHistory[0]
             )
             .HasColumnType("jsonb");
         builder.Property(o => o.RecordDate).HasDefaultValueSql("NOW()");

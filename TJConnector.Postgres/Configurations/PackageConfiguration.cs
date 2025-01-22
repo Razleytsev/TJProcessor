@@ -29,7 +29,6 @@ internal sealed class PackageConfiguration : IEntityTypeConfiguration<Package>
             )
             .HasColumnType("jsonb");
 
-        builder.HasOne<PackageRequest>().WithMany().HasForeignKey(p => p.PackageRequestId);
         builder.HasIndex(p => p.SSCCCode).IsUnique();
         builder.HasIndex(p => p.Code).IsUnique();
         builder.Property(p => p.SSCCCode).HasMaxLength(100);

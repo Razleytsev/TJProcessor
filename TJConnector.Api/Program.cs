@@ -27,6 +27,7 @@ builder.Services.AddHttpClient("ExternalApi", client =>
         = new AuthenticationHeaderValue("Basic"
         , Convert.ToBase64String(Encoding.ASCII.GetBytes(builder.Configuration.GetValue<string>("TJConnection:Token") ?? "")));
 });
+
 builder.Services.AddScoped<GetHttpClient>();
 builder.Services.AddScoped<IExternalContainer, ExternalContainerService>();
 builder.Services.AddScoped<IExternalEmission, ExternalEmissionService>();
