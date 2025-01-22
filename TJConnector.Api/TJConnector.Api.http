@@ -1,0 +1,6 @@
+@TJConnector.Api_HostAddress = http://localhost:5166
+
+GET {{TJConnector.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
