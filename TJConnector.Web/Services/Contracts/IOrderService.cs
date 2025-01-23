@@ -12,8 +12,8 @@ namespace TJConnector.Web.Services.Contracts
         Task<IEnumerable<CodeOrder>> GetOrdersAsync();
         Task<CodeOrder> GetOrderByIdAsync(int id);
         Task<CustomResult<DocumentCreateResponse>> CreateOrderAsync(OrderCreateForm form);
-        Task<CustomResult<ProcessResponse>> ProcessOrderAsync(Guid uuid);
-        Task<CustomResult<EmissionCodesResponse>> DownloadCodesAsync(Guid uuid);
+        Task<CustomResult<ProcessResponse>> ProcessOrderAsync(int uuid);
+        Task<CustomResult<EmissionCodesResponse>> DownloadCodesAsync(int uuid);
         Task<IActionResult> DownloadOrderContentAsync(int id, string user);
     }
 }

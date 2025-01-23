@@ -1,34 +1,38 @@
-﻿@page "/orders"
+﻿@page "/emission"
 @inject IOrderService OrderService
-@inject HttpClient HttpClient
+@inject IProductService ProductService
+@inject IMetadataService MetadataService
 
 <h3>Orders</h3>
 
+<button class="btn btn-primary" @onclick="ShowCreateOrderModal">Create New Order</button>
+
 <div class="container">
-    <div class="table-container">
+    <div class="table-container" style="width: 75%;">
         @if (orders == null)
         {
             <p>Loading...</p>
         }
         else
         {
-            <CustomTable Items="orders" Columns="columns" OnRowClick="OnOrderClick" />
+            <CustomTable Items="orders" Columns="columns" OnRowClick="EventCallback.Factory.Create<CodeOrder>(this, OnOrderClick)" />
         }
     </div>
-    <div class="details-container">
+    <div class="details-container" style="width: 25%;">
         @if (selectedOrder != null)
         {
             <h4>Order Information</h4>
             <div>
                 <p><strong>ID:</strong> @selectedOrder.Id</p>
                 <p><strong>Status:</strong> @selectedOrder.Status</p>
-                <p><strong>Description:</strong> @selectedOrder.Description</p>
-                <p><strong>User:</strong> @selectedOrder.User</p>
-                <p><strong>External GUID:</strong> @selectedOrder.ExternalGuid</p>
+                <p><strong>Created At:</strong> @selectedOrder.RecordDate</p>
+                <p><strong>Product UUID:</strong> @selectedOrder.Product.ExternalUid</p>
+                <p><strong>Status Text:</strong> @selectedOrder.StatusMessage</p>
+                <p><strong>Current status:</strong> @selectedOrder.StatusHistoryJson[-1].Status</p>
             </div>
-            <button @onclick="ProcessOrder" disabled="@(selectedOrder.Status != 2)">Process Order</button>
-            <button @onclick="DownloadCodes" disabled="@(selectedOrder.Status != 4)">Download Codes</button>
-            <button @onclick="DownloadContent" disabled="@(selectedOrder.Content == null)">Download Content</button>
+            <button class="btn btn-secondary" @onclick="ProcessOrder" disabled="@(!IsProcessButtonActive)">Process Order</button>
+            <button class="btn btn-secondary" @onclick="DownloadCodes" disabled="@(!IsDownloadCodesButtonActive)">Download Codes</button>
+            <button class="btn btn-secondary" @onclick="DownloadOrderContent" disabled="@(!IsDownloadContentButtonActive)">Download Content</button>
         }
         else
         {
@@ -37,112 +41,152 @@
     </div>
 </div>
 
-<button @onclick="ShowCreateOrderModal">Create New Order</button>
-
 @if (showCreateOrderModal)
 {
-    <div class="modal">
-        <div class="modal-content">
-            <h4>Create New Order</h4>
-            <EditForm Model="@newOrderForm" OnValidSubmit="CreateOrder">
-                <InputNumber @bind-Value="newOrderForm.CodesCount" max="100000" />
-                <InputSelect @bind-Value="newOrderForm.ProductUuid">
-                    @foreach (var product in products)
-                    {
-                        <option value="@product.ExternalUid">@product.Name</option>
-                    }
-                </InputSelect>
-                <InputSelect @bind-Value="newOrderForm.MarkingLineUuid">
-                    @foreach (var line in markingLines)
-                    {
-                        <option value="@line.Uuid">@line.Name</option>
-                    }
-                </InputSelect>
-                <InputSelect @bind-Value="newOrderForm.FactoryUuid">
-                    @foreach (var factory in factories)
-                    {
-                        <option value="@factory.Uuid">@factory.Name</option>
-                    }
-                </InputSelect>
-                <InputSelect @bind-Value="newOrderForm.Type">
-                    @foreach (var product in products)
-                    {
-                        <option value="@product.Type">@product.Type</option>
-                    }
-                </InputSelect>
-                <button type="submit">Create</button>
-                <button type="button" @onclick="HideCreateOrderModal">Cancel</button>
-            </EditForm>
+    <div class="modal" style="display: block;">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Order</h5>
+                    <button type="button" class="close" @onclick="CloseCreateOrderModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <label>Product UUID</label>
+                            <select class="form-control" @bind="newOrderForm.ProductUuid">
+                                @foreach (var product in products)
+                                {
+                                    <option value="@product.ExternalUid">@product.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Product ID</label>
+                            <select class="form-control" @bind="newOrderForm.ProductId">
+                                @foreach (var product in products)
+                                {
+                                    <option value="@product.Id">@product.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select class="form-control" @bind="newOrderForm.Type">
+                                @foreach (var product in products)
+                                {
+                                    <option value="@product.Type">@GetProductTypeString(product.Type)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Factory UUID</label>
+                            <select class="form-control" @bind="newOrderForm.FactoryUuid">
+                                @foreach (var factory in factories)
+                                {
+                                    <option value="@factory.ExternalUid">@factory.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Marking Line UUID</label>
+                            <select class="form-control" @bind="newOrderForm.MarkingLineUuid">
+                                @foreach (var markingLine in markingLines)
+                                {
+                                    <option value="@markingLine.ExternalUid">@markingLine.Name</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Codes Count</label>
+                            <input type="number" class="form-control" @bind="newOrderForm.CodesCount" max="100000" />
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="CreateOrder">Create</button>
+                    <button class="btn btn-secondary" @onclick="CloseCreateOrderModal">Cancel</button>
+                </div>
+            </div>
         </div>
     </div>
 }
 
 @code {
     private IEnumerable<CodeOrder>? orders;
-    private CodeOrder? selectedOrder;
     private List<CustomTable<CodeOrder>.ColumnDefinition<CodeOrder>> columns = new();
+    private CodeOrder? selectedOrder;
     private bool showCreateOrderModal = false;
     private OrderCreateForm newOrderForm = new();
-    private List<Product> products = new();
-    private List<Factory> factories = new();
-    private List<MarkingLine> markingLines = new();
+    private IEnumerable<Product>? products;
+    private IEnumerable<Factory>? factories;
+    private IEnumerable<Location>? locations;
+    private IEnumerable<MarkingLine>? markingLines;
 
     protected override async Task OnInitializedAsync()
     {
-        orders = await OrderService.GetOrdersAsync();
-        columns = new()
+        // <p><strong>ID:</strong> @selectedOrder.Id</p>
+        // <p><strong>Status:</strong> @selectedOrder.Status</p>
+        // <p><strong>Created At:</strong> @selectedOrder.RecordDate</p>
+        // <p><strong>Product UUID:</strong> @selectedOrder.Product.ExternalUid</p>
+        // <p><strong>Status Text:</strong> @selectedOrder.StatusMessage</p>
+        // <p><strong>Current status:</strong> @selectedOrder.StatusHistoryJson[-1].Status</p>
+        try
         {
-            new() { Header = "ID", Value = o => o.Id },
-            new() { Header = "Status", Value = o => o.Status },
-            new() { Header = "Description", Value = o => o.Description },
-            new() { Header = "User", Value = o => o.User },
-            new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
-        };
+            orders = await OrderService.GetOrdersAsync();
+            products = await ProductService.GetProductsAsync();
+            factories = await MetadataService.GetFactoriesAsync();
+            locations = await MetadataService.GetLocationsAsync();
+            markingLines = await MetadataService.GetMarkingLinesAsync();
 
-        products = await HttpClient.GetFromJsonAsync<List<Product>>("api/product") ?? new();
-        factories = await HttpClient.GetFromJsonAsync<List<Factory>>("api/factory") ?? new();
-        markingLines = await HttpClient.GetFromJsonAsync<List<MarkingLine>>("api/markingline") ?? new();
-
-        newOrderForm.ProductUuid = products.FirstOrDefault()?.ExternalUid ?? Guid.Empty;
-        newOrderForm.MarkingLineUuid = markingLines.FirstOrDefault()?.Uuid ?? Guid.Empty;
-        newOrderForm.FactoryUuid = factories.FirstOrDefault()?.Uuid ?? Guid.Empty;
-        newOrderForm.Type = products.FirstOrDefault()?.Type ?? 0;
+            columns = new()
+            {
+                new() { Header = "ID", Value = o => o.Id },
+                new() { Header = "Status", Value = o => o.Status },
+                new() { Header = "Created At", Value = o => o.RecordDate },
+                new() { Header = "Product UUID", Value = o => o.Product.ExternalUid },
+                new() { Header = "Status Text", Value = o => o.StatusMessage },
+                new() { Header = "CurrentStatus", Value = o => o.StatusHistoryJson[-1].Status },
+                new() { Header = "Codes Count", Value = o => o.Count }
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching data: {ex.Message}");
+        }
     }
 
-    private void OnOrderClick(CodeOrder order)
+    private async Task OnOrderClick(CodeOrder order)
     {
-        selectedOrder = order;
+        selectedOrder = await OrderService.GetOrderByIdAsync(order.Id);
     }
+
+    private bool IsProcessButtonActive => selectedOrder?.Status == 1;
+    private bool IsDownloadCodesButtonActive => (selectedOrder?.Status == 4) || (selectedOrder?.Status == 6);
+    private bool IsDownloadContentButtonActive => selectedOrder?.Content == null;
 
     private async Task ProcessOrder()
     {
-        if (selectedOrder?.ExternalGuid != null)
+        if (selectedOrder != null)
         {
-            var result = await OrderService.ProcessOrderAsync(selectedOrder.ExternalGuid.Value);
-            if (result.Success)
-            {
-                selectedOrder.Status = 2;
-            }
+            await OrderService.ProcessOrderAsync(selectedOrder.Id);
+            selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
         }
     }
 
     private async Task DownloadCodes()
     {
-        if (selectedOrder?.ExternalGuid != null)
+        if (selectedOrder != null)
         {
-            var result = await OrderService.DownloadCodesAsync(selectedOrder.ExternalGuid.Value);
-            if (result.Success)
-            {
-                selectedOrder.Status = 4;
-            }
+            await OrderService.DownloadCodesAsync(selectedOrder.Id);
         }
     }
 
-    private async Task DownloadContent()
+    private async Task DownloadOrderContent()
     {
         if (selectedOrder != null)
         {
-            await OrderService.DownloadOrderContentAsync(selectedOrder.Id, "User");
+            await OrderService.DownloadOrderContentAsync(selectedOrder.Id, "user");
         }
     }
 
@@ -151,7 +195,7 @@
         showCreateOrderModal = true;
     }
 
-    private void HideCreateOrderModal()
+    private void CloseCreateOrderModal()
     {
         showCreateOrderModal = false;
     }
@@ -164,5 +208,19 @@
             orders = await OrderService.GetOrdersAsync();
             showCreateOrderModal = false;
         }
+        else
+        {
+            Console.WriteLine("Failed to create order: " + result.Message);
+        }
+    }
+
+    private string GetProductTypeString(int type)
+    {
+        return type switch
+        {
+            0 => "Pack",
+            1 => "Bundle",
+            _ => "Unknown"
+        };
     }
 }
