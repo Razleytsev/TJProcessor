@@ -9,7 +9,12 @@ using TJConnector.StateSystem.Services.Implementation;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Host.UseSerilog((context, loggerConfig) => loggerConfig.ReadFrom.Configuration(context.Configuration));
+var progData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console()
+    .WriteTo.File(Path.Combine(progData, "TJConnectorAPI", "servicelog.txt"), rollingInterval: RollingInterval.Day)
+    .CreateLogger();
+builder.Host.UseSerilog();
 
 var connect = builder.Configuration.GetConnectionString("LocalDb");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>

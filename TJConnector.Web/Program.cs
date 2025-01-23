@@ -10,7 +10,7 @@ builder.Services.AddServerSideBlazor();
 
 builder.Services.AddScoped(sp => new HttpClient
 {
-    BaseAddress = new Uri("https://localhost:7006") // Replace with your API's base address
+    BaseAddress = new Uri("http://localhost:5166") // Replace with your API's base address
 });
 
 builder.Services.AddScoped<IProductService, ProductService>();
