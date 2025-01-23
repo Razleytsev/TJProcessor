@@ -1,0 +1,115 @@
+﻿@using System.Reflection
+<h3>CustomTable</h3>
+
+<input type="text" class="form-control mb-3" placeholder="Search" @bind="searchText" style="width: 33.33%; margin-left: auto; color: transparent;" />
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            @foreach (var column in Columns)
+            {
+                <th @onclick="() => SortByColumn(column)" style="cursor: pointer;">
+                    @column.Name @SortIcon(column.Name)
+                </th>
+            }
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var row in FilteredData)
+        {
+            <tr>
+                @foreach (var column in Columns)
+                {
+                    <td>@column.Property.GetValue(row)</td>
+                }
+            </tr>
+        }
+    </tbody>
+</table>
+
+@code {
+    [Parameter]
+    public IEnumerable<object> Data { get; set; } = [];
+
+    private string searchText = string.Empty;
+
+    private string sortBy = string.Empty;
+    private bool ascending = true;
+
+    private List<ColumnInfo> Columns = [];
+
+    private IEnumerable<object> FilteredData
+    {
+        get
+        {
+            var filteredData = Data.Where(item =>
+                Columns.Any(column =>
+                    column.Property.GetValue(item)?.ToString().ToLower()
+                    .Contains(searchText.ToLower()) ?? false));
+
+            if (!string.IsNullOrEmpty(sortBy))
+            {
+                var column = Columns.First(x => x.Name == sortBy);
+
+                filteredData = ascending
+                    ? filteredData.OrderBy(item => GetCompValue(item, column))
+                    : filteredData.OrderByDescending(item => GetCompValue(item, column));
+            }
+
+            return filteredData;
+        }
+    }
+
+
+    private object GetCompValue(object item, ColumnInfo column)
+    {
+        var value = Columns.First(c => c.Name == sortBy).Property.GetValue(item);
+
+        if (value is IComparable comparable)
+            return comparable;
+
+        return value?.ToString() ?? string.Empty;
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (Data != null && Data.Any())
+        {
+            var firstItem = Data.First();
+
+            if (firstItem is null)
+                return;
+
+            var properties = firstItem.GetType().GetProperties();
+            Columns = properties.Select(p => new ColumnInfo
+                {
+                    Name = p.Name,
+                    Property = p
+                }).ToList();
+        }
+    }
+
+    private void SortByColumn(ColumnInfo column)
+    {
+        if (sortBy == column.Name)
+        {
+            ascending = !ascending;
+        }
+        else
+        {
+            sortBy = column.Name;
+            ascending = true;
+        }
+    }
+
+    public string SortIcon(string columnName)
+    {
+        return sortBy == columnName ? (ascending ? "↓" : "↑") : "";
+    }
+
+    public class ColumnInfo
+    {
+        public string Name { get; set; }
+        public PropertyInfo Property { get; set; }
+    }
+}

@@ -1,110 +1,96 @@
 ﻿@page "/products"
-@using System.Net.Http.Headers
-@using System.Text
-@using System.Text.Json
-
-@inject HttpClient Http
-
-@functions {
-    private List<Item> Items = new();
-    private string SortColumn = "Gtin";
-    private bool SortAscending = true;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await FetchData();
-    }
-
-    private async Task FetchData()
-    {
-        var username = "PEpk1O-cQs6cAouT2DxMvQ-0:mar_Z4i9cHGkTFuEtQRh/0n5pg_Z4i9cHGkTFuEtQRh/0n5pg_SgR8u0vNhtxZgYGlwRmod/0Oj5LVcc4IcNCs5CpQIeRuJIPZoLhcswzUg0DELEwPxrvF9i1YrvqDJ3621JbhbA";
-
-
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}")));
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://pub-api.mark.tj:5230/product/personal/find");
-        var content = new StringContent("{\r\n    \"limit\": 100,\r\n    \"offset\": 0\r\n}", null, "application/json");
-        request.Content = content;
-        var response = await client.SendAsync(request);
-
-
-        // var apiUrl = "https://pub-api.mark.tj:5230/product/personal/find";
-        // var password = "";
-
-        // var client = Http;
-        // client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}")));
-        // var requestBody = JsonSerializer.Serialize(new { Limit = 100, Offset = 0 });
-        // var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-
-        // var response = await client.PostAsync(apiUrl, content);
-        if (response.IsSuccessStatusCode)
-        {
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var apiResponse = JsonSerializer.Deserialize<ApiResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (apiResponse != null)
-            {
-                Items = apiResponse.Items;
-                SortItems();
-            }
-        }
-    }
-
-    private void SortItems()
-    {
-        Items = SortAscending
-            ? Items.OrderBy(item => item.GetType().GetProperty(SortColumn)?.GetValue(item, null)).ToList()
-            : Items.OrderByDescending(item => item.GetType().GetProperty(SortColumn)?.GetValue(item, null)).ToList();
-    }
-
-    private void ChangeSortColumn(string column)
-    {
-        if (SortColumn == column)
-        {
-            SortAscending = !SortAscending;
-        }
-        else
-        {
-            SortColumn = column;
-            SortAscending = true;
-        }
-        SortItems();
-    }
-
-    public class ApiResponse
-    {
-        public List<Item> Items { get; set; } = new();
-        public int Total { get; set; }
-    }
-
-    public class Item
-    {
-        public string Gtin { get; set; }
-        public string Name { get; set; }
-        public string Uuid { get; set; }
-        public string Trademark { get; set; }
-    }
-}
+@inject IProductService ProductService
 
 <h3>Products</h3>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.Gtin))">Gtin</th>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.Name))">Name</th>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.Uuid))">Uuid</th>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.Trademark))">Trademark</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Items)
+<div class="container">
+    <div class="table-container">
+        @if (products == null)
         {
-            <tr>
-                <td>@item.Gtin</td>
-                <td>@item.Name</td>
-                <td>@item.Uuid</td>
-                <td>@item.Trademark</td>
-            </tr>
+            <p>Loading...</p>
         }
-    </tbody>
-</table>
+        else
+        {
+            <CustomTable Items="products" Columns="columns" OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)" />
+        }
+    </div>
+    <div class="details-container">
+        @if (selectedProductExternalInfo != null)
+        {
+            <h4>External Product Information</h4>
+            <div>
+                <p><strong>Name:</strong> @selectedProductExternalInfo.name</p>
+                <p><strong>GTIN:</strong> @selectedProductExternalInfo.gtin</p>
+                <p><strong>Manufacturer:</strong> @selectedProductExternalInfo.manufacturerName</p>
+                <p><strong>Weight (Gross):</strong> @selectedProductExternalInfo.weightGross</p>
+                <p><strong>Dimensions:</strong> @selectedProductExternalInfo.length x @selectedProductExternalInfo.width x @selectedProductExternalInfo.height</p>
+                <p><strong>Storage Conditions:</strong> @selectedProductExternalInfo.storageConditions</p>
+                <p><strong>Composition:</strong> @selectedProductExternalInfo.composition</p>
+                <p><strong>Country of Origin:</strong> @selectedProductExternalInfo.productCountryOfOrigin</p>
+            </div>
+        }
+        else
+        {
+            <p>Select a product to view external information.</p>
+        }
+    </div>
+</div>
+
+@code {
+    private IEnumerable<Product>? products;
+    private List<CustomTable<Product>.ColumnDefinition<Product>> columns = new();
+    private ProductInfoResponse? selectedProductExternalInfo;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            products = await ProductService.GetProductsAsync();
+            columns = new()
+            {
+                new() { Header = "ID", Value = p => p.Id },
+                new() { Header = "Name", Value = p => p.Name },
+                new() { Header = "GTIN", Value = p => p.Gtin },
+                new() { Header = "Type", Value = p => GetProductTypeString(p.Type) },
+                new() { Header = "External UUID", Value = p => p.ExternalUid },
+                new() { Header = "Record Date", Value = p => p.RecordDate }
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching products: {ex.Message}");
+        }
+    }
+
+    private string GetProductTypeString(int type)
+    {
+        return type switch
+        {
+            0 => "Pack",
+            1 => "Bundle",
+            _ => "Unknown"
+        };
+    }
+
+    private async Task OnProductClick(Product product)
+    {
+        try
+        {
+            var result = await ProductService.GetExternalProductByIdAsync(product.ExternalUid.ToString());
+            if (result.Success && result.Content != null)
+            {
+                selectedProductExternalInfo = result.Content;
+            }
+            else
+            {
+                Console.WriteLine("Failed to fetch external product info: " + result.Message);
+                selectedProductExternalInfo = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching external product info: {ex.Message}");
+            selectedProductExternalInfo = null;
+        }
+    }
+}

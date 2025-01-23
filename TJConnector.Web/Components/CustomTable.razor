@@ -1,115 +1,73 @@
-﻿@using System.Reflection
-<h3>CustomTable</h3>
+﻿@typeparam TItem
 
-<input type="text" class="form-control mb-3" placeholder="Search" @bind="searchText" style="width: 33.33%; margin-left: auto; color: transparent;" />
+<label for="filter">Filter:</label>
+<input id="filter" @bind="FilterText" @bind:event="oninput" placeholder="Type to filter..." />
 
-<table class="table table-bordered table-striped">
-    <thead>
-        <tr>
-            @foreach (var column in Columns)
-            {
-                <th @onclick="() => SortByColumn(column)" style="cursor: pointer;">
-                    @column.Name @SortIcon(column.Name)
-                </th>
-            }
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var row in FilteredData)
-        {
+<div class="table-wrapper">
+    <table class="table">
+        <thead>
             <tr>
                 @foreach (var column in Columns)
                 {
-                    <td>@column.Property.GetValue(row)</td>
+                    <th @onclick="() => SortBy(column)">
+                        @column.Header
+                        @if (SortColumn == column)
+                        {
+                            <span>@(SortAscending ? "▲" : "▼")</span>
+                        }
+                    </th>
                 }
             </tr>
-        }
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @foreach (var item in FilteredItems)
+            {
+                <tr @onclick="() => OnRowClick.InvokeAsync(item)">
+                    @foreach (var column in Columns)
+                    {
+                        <td>@column.Value(item)</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
 
 @code {
     [Parameter]
-    public IEnumerable<object> Data { get; set; } = [];
+    public IEnumerable<TItem> Items { get; set; } = Enumerable.Empty<TItem>();
 
-    private string searchText = string.Empty;
+    [Parameter]
+    public List<ColumnDefinition<TItem>> Columns { get; set; } = new();
 
-    private string sortBy = string.Empty;
-    private bool ascending = true;
+    [Parameter]
+    public EventCallback<TItem> OnRowClick { get; set; }
 
-    private List<ColumnInfo> Columns = [];
+    private string FilterText { get; set; } = string.Empty;
+    private ColumnDefinition<TItem>? SortColumn { get; set; }
+    private bool SortAscending { get; set; } = true;
 
-    private IEnumerable<object> FilteredData
+    private IEnumerable<TItem> FilteredItems => Items
+        .Where(item => Columns.Any(column => column.Value(item)?.ToString()?.Contains(FilterText, StringComparison.OrdinalIgnoreCase) == true))
+        .OrderBy(item => SortColumn?.Value(item) ?? "")
+        .ThenBy(item => SortColumn != null && !SortAscending ? "" : "");
+
+    private void SortBy(ColumnDefinition<TItem> column)
     {
-        get
+        if (SortColumn == column)
         {
-            var filteredData = Data.Where(item =>
-                Columns.Any(column =>
-                    column.Property.GetValue(item)?.ToString().ToLower()
-                    .Contains(searchText.ToLower()) ?? false));
-
-            if (!string.IsNullOrEmpty(sortBy))
-            {
-                var column = Columns.First(x => x.Name == sortBy);
-
-                filteredData = ascending
-                    ? filteredData.OrderBy(item => GetCompValue(item, column))
-                    : filteredData.OrderByDescending(item => GetCompValue(item, column));
-            }
-
-            return filteredData;
-        }
-    }
-
-
-    private object GetCompValue(object item, ColumnInfo column)
-    {
-        var value = Columns.First(c => c.Name == sortBy).Property.GetValue(item);
-
-        if (value is IComparable comparable)
-            return comparable;
-
-        return value?.ToString() ?? string.Empty;
-    }
-
-    protected override void OnParametersSet()
-    {
-        if (Data != null && Data.Any())
-        {
-            var firstItem = Data.First();
-
-            if (firstItem is null)
-                return;
-
-            var properties = firstItem.GetType().GetProperties();
-            Columns = properties.Select(p => new ColumnInfo
-                {
-                    Name = p.Name,
-                    Property = p
-                }).ToList();
-        }
-    }
-
-    private void SortByColumn(ColumnInfo column)
-    {
-        if (sortBy == column.Name)
-        {
-            ascending = !ascending;
+            SortAscending = !SortAscending;
         }
         else
         {
-            sortBy = column.Name;
-            ascending = true;
+            SortColumn = column;
+            SortAscending = true;
         }
     }
 
-    public string SortIcon(string columnName)
+    public class ColumnDefinition<T>
     {
-        return sortBy == columnName ? (ascending ? "↓" : "↑") : "";
-    }
-
-    public class ColumnInfo
-    {
-        public string Name { get; set; }
-        public PropertyInfo Property { get; set; }
+        public string Header { get; set; } = string.Empty;
+        public Func<T, object?> Value { get; set; } = _ => null;
     }
 }

@@ -24,12 +24,14 @@
         public sbyte? productStatus { get; set; }
         public sbyte? productType { get; set; }
         public string? productUuid { get; set; }
-        public sbyte status { get; set; }
+        public sbyte? status { get; set; }
         public string? tnved { get; set; }
         public sbyte? type { get; set; }
-        public int unusedCodesCount { get; set; }
-        public Guid uuid { get; set; }
+        public int? unusedCodesCount { get; set; }
+        public Guid? uuid { get; set; }
         public DateTime? version { get; set; }
+        public int? statusCode { get; set; }
+        public string? message { get; set; }
     }
 
 }

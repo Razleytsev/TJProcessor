@@ -29,6 +29,7 @@ builder.Services.AddHttpClient("ExternalApi", client =>
 });
 
 builder.Services.AddScoped<GetHttpClient>();
+builder.Services.AddScoped<CustomHttpClient>();
 builder.Services.AddScoped<IExternalContainer, ExternalContainerService>();
 builder.Services.AddScoped<IExternalEmission, ExternalEmissionService>();
 builder.Services.AddScoped<IExternalProduct, ExternalProductService>();

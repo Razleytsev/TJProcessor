@@ -1,10 +1,20 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using TJConnector.Web.Services.Contracts;
+using TJConnector.Web.Services.Implementation;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
+
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri("https://localhost:7006") // Replace with your API's base address
+});
+
+builder.Services.AddScoped<IProductService, ProductService>();
+
 
 var app = builder.Build();
 
@@ -15,11 +25,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-builder.Services.AddHttpClient("Api",client =>
-{
-    client.BaseAddress = new("https://localhost:7006");
 
-});
 
 app.UseHttpsRedirection();
 

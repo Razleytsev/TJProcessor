@@ -12,8 +12,8 @@ using TJConnector.Postgres;
 namespace TJConnector.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250121100451_RemoveColumnsFixClasses")]
-    partial class RemoveColumnsFixClasses
+    [Migration("20250122114504_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

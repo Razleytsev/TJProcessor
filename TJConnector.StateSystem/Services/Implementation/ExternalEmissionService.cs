@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Json;
+﻿using Microsoft.Extensions.Logging;
+using System.Net.Http.Json;
 using TJConnector.StateSystem.Helpers;
 using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
@@ -10,109 +11,218 @@ using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.StateSystem.Services.Implementation
 {
-    public class ExternalEmissionService(GetHttpClient client) : IExternalEmission
+    public class ExternalEmissionService : IExternalEmission
     {
-        public Task<CustomResult<DocumentCreateResponse>> CreateCodeApplication(ApplicationCreateRequest body)
+        private readonly CustomHttpClient _httpClient;
+        private readonly ILogger<ExternalEmissionService> _logger;
+
+        public ExternalEmissionService(CustomHttpClient httpClient, ILogger<ExternalEmissionService> logger)
         {
-            throw new NotImplementedException();
+            _httpClient = httpClient;
+            _logger = logger;
+        }
+
+        public async Task<CustomResult<DocumentCreateResponse>> CreateCodeApplication(ApplicationCreateRequest body)
+        {
+            if (body == null)
+            {
+                _logger.LogError("Application create request body cannot be null.");
+                return new CustomResult<DocumentCreateResponse> { Success = false, Message = "Request body is required." };
+            }
+
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("markingCode/application", body);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to create code application. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<DocumentCreateResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<DocumentCreateResponse>();
+                return new CustomResult<DocumentCreateResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while creating code application.");
+                return new CustomResult<DocumentCreateResponse> { Success = false, Message = ex.Message };
+            }
         }
 
         public async Task<CustomResult<DocumentCreateResponse>> CreateCodeEmission(EmissionCreateRequest body)
         {
-            var httpClient = client.GetPublicHttpClient();
-            var response = await httpClient.PostAsJsonAsync("markingCode/emission", body);
-
-            if (response.Content is null)
+            if (body == null)
             {
-                return new CustomResult<DocumentCreateResponse>() { Success = false, Message = "Execution error" };
+                _logger.LogError("Emission create request body cannot be null.");
+                return new CustomResult<DocumentCreateResponse> { Success = false, Message = "Request body is required." };
             }
 
-            var result = await response.Content.ReadFromJsonAsync<DocumentCreateResponse>();
-
-            return new CustomResult<DocumentCreateResponse>()
+            try
             {
-                Content = result,
-                Success = true
-            };
+                var response = await _httpClient.PostAsJsonAsync("markingCode/emission", body);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to create code emission. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<DocumentCreateResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<DocumentCreateResponse>();
+                return new CustomResult<DocumentCreateResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while creating code emission.");
+                return new CustomResult<DocumentCreateResponse> { Success = false, Message = ex.Message };
+            }
         }
 
         public async Task<CustomResult<EmissionCodesResponse>> GetCodesFromEmission(ProcessDocument body)
         {
-            var httpClient = client.GetPublicHttpClient();
-            var response = await httpClient.PostAsJsonAsync("markingCode/emission/codes", body);
-
-            if (response.Content is null)
+            if (body == null)
             {
-                return new CustomResult<EmissionCodesResponse>() { Success = false, Message = "Execution error" };
+                _logger.LogError("Process document body cannot be null.");
+                return new CustomResult<EmissionCodesResponse> { Success = false, Message = "Request body is required." };
             }
 
-            var result = await response.Content.ReadFromJsonAsync<EmissionCodesResponse>();
-
-            return new CustomResult<EmissionCodesResponse>()
+            try
             {
-                Content = result,
-                Success = true
-            };
+                var response = await _httpClient.PostAsJsonAsync("markingCode/emission/codes", body);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to fetch codes from emission. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<EmissionCodesResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<EmissionCodesResponse>();
+                return new CustomResult<EmissionCodesResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching codes from emission.");
+                return new CustomResult<EmissionCodesResponse> { Success = false, Message = ex.Message };
+            }
         }
 
         public async Task<CustomResult<EmissionInfoResponse>> GetEmissionInfo(Guid uuid)
         {
-            var httpClient = client.GetPublicHttpClient();
-            var response = await httpClient.GetFromJsonAsync<EmissionInfoResponse>($"markingCode/emission/{uuid}");
-
-            if (response is null)
+            if (uuid == Guid.Empty)
             {
-                return new CustomResult<EmissionInfoResponse>() { Success = false, Message = "Execution error" };
+                _logger.LogError("UUID cannot be empty.");
+                return new CustomResult<EmissionInfoResponse> { Success = false, Message = "UUID is required." };
             }
 
-            return new CustomResult<EmissionInfoResponse>()
+            try
             {
-                Content = response,
-                Success = true
-            };
+                var response = await _httpClient.GetAsync($"markingCode/emission/{uuid}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to fetch emission info for UUID {uuid}. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<EmissionInfoResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<EmissionInfoResponse>();
+                return new CustomResult<EmissionInfoResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An error occurred while fetching emission info for UUID {uuid}.");
+                return new CustomResult<EmissionInfoResponse> { Success = false, Message = ex.Message };
+            }
         }
 
         public async Task<CustomResult<EmissionListResponse>> GetEmissionList(ListRequestRequest listRequestBody)
         {
-            var httpClient = client.GetPublicHttpClient();
-            var response = await httpClient.PostAsJsonAsync($"product/personal/find", listRequestBody);
-
-            if (response.Content is null)
+            if (listRequestBody == null)
             {
-                return new CustomResult<EmissionListResponse>() { Success = false, Message = "Execution error" };
+                _logger.LogError("List request body cannot be null.");
+                return new CustomResult<EmissionListResponse> { Success = false, Message = "Request body is required." };
             }
 
-            var result = await response.Content.ReadFromJsonAsync<EmissionListResponse>();
-
-            return new CustomResult<EmissionListResponse>()
+            try
             {
-                Content = result,
-                Success = true
-            };
+                var response = await _httpClient.PostAsJsonAsync("markingCode/emission/list", listRequestBody);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to fetch emission list. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<EmissionListResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<EmissionListResponse>();
+                return new CustomResult<EmissionListResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching emission list.");
+                return new CustomResult<EmissionListResponse> { Success = false, Message = ex.Message };
+            }
         }
 
-        public Task<CustomResult<ProcessResponse>> ProcessCodeApplication(ProcessDocument body)
+        public async Task<CustomResult<ProcessResponse>> ProcessCodeApplication(ProcessDocument body)
         {
-            throw new NotImplementedException();
+            if (body == null)
+            {
+                _logger.LogError("Process document body cannot be null.");
+                return new CustomResult<ProcessResponse> { Success = false, Message = "Request body is required." };
+            }
+
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("markingCode/application/process", body);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to process code application. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<ProcessResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<ProcessResponse>();
+                return new CustomResult<ProcessResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while processing code application.");
+                return new CustomResult<ProcessResponse> { Success = false, Message = ex.Message };
+            }
         }
 
         public async Task<CustomResult<ProcessResponse>> ProcessCodeEmission(ProcessDocument body)
         {
-            var httpClient = client.GetPublicHttpClient();
-            var response = await httpClient.PostAsJsonAsync("markingCode/emission/process", body);
-
-            if (response.Content is null)
+            if (body == null)
             {
-                return new CustomResult<ProcessResponse>() { Success = false, Message = "Execution error" };
+                _logger.LogError("Process document body cannot be null.");
+                return new CustomResult<ProcessResponse> { Success = false, Message = "Request body is required." };
             }
 
-            var result = await response.Content.ReadFromJsonAsync<ProcessResponse>();
-
-            return new CustomResult<ProcessResponse>()
+            try
             {
-                Content = result,
-                Success = true
-            };
+                var response = await _httpClient.PostAsJsonAsync("markingCode/emission/process", body);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to process code emission. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<ProcessResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<ProcessResponse>();
+                return new CustomResult<ProcessResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while processing code emission.");
+                return new CustomResult<ProcessResponse> { Success = false, Message = ex.Message };
+            }
         }
     }
 }
