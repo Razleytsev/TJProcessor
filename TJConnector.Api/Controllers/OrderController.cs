@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 using TJConnector.Postgres;
 using TJConnector.Postgres.Entities;
 using TJConnector.SharedLibrary.DTOs.Forms;
@@ -7,180 +8,266 @@ using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
 using TJConnector.StateSystem.Services.Contracts;
 
-namespace TJConnector.Api.Controllers
+namespace TJConnector.Api.Controllers;
+
+[ApiController]
+[Route("api/order")]
+public class OrderController : ControllerBase
 {
-    [ApiController]
-    [Route("api/order")]
-    public class OrderController : ControllerBase
+    private readonly ApplicationDbContext _context;
+    private readonly IExternalEmission _externalEmission;
+    private readonly ILogger<OrderController> _logger;
+
+    public OrderController(
+        ApplicationDbContext context,
+        IExternalEmission externalEmission,
+        ILogger<OrderController> logger)
     {
-        private readonly ApplicationDbContext _context;
-        private readonly IExternalEmission _externalEmission;
+        _context = context;
+        _externalEmission = externalEmission;
+        _logger = logger;
+    }
 
-        public OrderController(ApplicationDbContext context, IExternalEmission externalEmission)
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<CodeOrder>>> GetOrders()
+    {
+        return await _context.CodeOrders.ToListAsync();
+    }
+
+    [HttpGet("{id}")]
+    public async Task<ActionResult<CodeOrder>> GetOrderById(int id)
+    {
+        var order = await _context.CodeOrders.FindAsync(id);
+
+        if (order == null)
         {
-            _context = context;
-            _externalEmission = externalEmission;
+            _logger.LogWarning($"Order with ID {id} not found.");
+            return NotFound();
         }
 
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<CodeOrder>>> GetOrders()
+        return order;
+    }
+
+    [HttpPost]
+    public async Task<ActionResult> CreateOrder([FromBody] OrderCreateForm order)
+    {
+        if (order == null)
         {
-            return await _context.CodeOrders.ToListAsync();
+            _logger.LogError("Order create request body cannot be null.");
+            return BadRequest("Request body is required.");
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<CodeOrder>> GetOrderById(int id)
+        var localOrder = new CodeOrder
         {
-            var order = await _context.CodeOrders.FindAsync(id);
+            Count = order.CodesCount,
+            Description = order.Description,
+            ProductId = order.ProductId,
+            User = order.User,
+            Status = 0,
+            StatusHistoryJson = new[] { new StatusHistory { Status = 0, StatusDate = DateTimeOffset.UtcNow } },
+            Type = order.Type
+        };
 
-            if (order == null)
-            {
-                return NotFound();
-            }
+        _context.CodeOrders.Add(localOrder);
 
-            return order;
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving order to the database.");
+            return BadRequest(ex.Message);
         }
 
-        [HttpPost]
-        public async Task<ActionResult> CreateOrder(OrderCreateForm order)
+        await Task.Delay(500);
+
+        var emissionRequest = new EmissionCreateRequest
         {
-            CodeOrder localOrder = new CodeOrder()
-            {
-                Count = order.CodesCount,
-                Description = order.Description,
-                ProductId = order.ProductId,
-                User = order.User,
-                Status = 0,
-                StatusHistoryJson = new StatusHistory[] { new StatusHistory { Status = 0, StatusDate = DateTimeOffset.UtcNow } } ,
-                Type = order.Type
-            }; 
-            _context.CodeOrders.Add(localOrder);
+            codesCount = order.CodesCount,
+            productUuid = order.ProductUuid,
+            markingLineUuid = order.MarkingLineUuid,
+            factoryUuid = order.FactoryUuid,
+            Type = order.Type
+        };
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+        var result = await _externalEmission.CreateCodeEmission(emissionRequest);
 
-            EmissionCreateRequest emissionCodesRequest = new EmissionCreateRequest()
-            {
-                codesCount = order.CodesCount,
-                factoryUuid = order.FactoryUuid,
-                markingLineUuid = order.MarkingLineUuid,
-                productUuid = order.ProductUuid,
-                Type = order.Type
-            };
+        if (!result.Success || result.Content?.uuid == null)
+        {
+            localOrder.Status = -1;
+            localOrder.StatusMessage = result.Message ?? "Blank result from state system";
+            localOrder.StatusHistoryJson = localOrder.StatusHistoryJson
+                .Append(new StatusHistory { Status = -1, StatusDate = DateTimeOffset.UtcNow }).ToArray();
 
-            var result = await _externalEmission.CreateCodeEmission(emissionCodesRequest);
-
-            if (result == null) { 
-                localOrder.Status = -1;
-                localOrder.StatusMessage = "Blank result from state system";
-                _context.Entry(localOrder).State = EntityState.Modified;
-                await _context.SaveChangesAsync();
-                return BadRequest(); 
-            }
-            if (result.Content == null) {
-                localOrder.Status = -1;
-                localOrder.StatusMessage = $"Blank result from state system. {result.Message}";
-                _context.Entry(localOrder).State = EntityState.Modified;
-                await _context.SaveChangesAsync();
-                return BadRequest(result.Message); 
-            }
-
-            localOrder.Status = 1;
-            localOrder.ExternalGuid = result.Content.uuid;
             _context.Entry(localOrder).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
-            return Ok();
+            return BadRequest(result.Message ?? "Failed to create emission in external system.");
         }
 
-        [HttpGet("external/{id}")]
-        public async Task<ActionResult<CodeOrder>> GetExternalOrderById(string id)
+        localOrder.Status = 1;
+        localOrder.ExternalGuid = result.Content.uuid;
+        localOrder.StatusHistoryJson = localOrder.StatusHistoryJson
+            .Append(new StatusHistory { Status = 1, StatusDate = DateTimeOffset.UtcNow }).ToArray();
+
+        _context.Entry(localOrder).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
+
+        return Ok();
+    }
+
+    [HttpGet("external/{id}")]
+    public async Task<ActionResult<CodeOrder>> GetExternalOrderById(int id)
+    {
+        var localOrder = await _context.CodeOrders.FindAsync(id);
+
+        if (localOrder == null)
         {
-            var localOrder = await _context.CodeOrders.FindAsync(id);
-
-            if (localOrder == null)
-            {
-                return NotFound();
-            }
-            if (localOrder.ExternalGuid == null)
-            {
-                return BadRequest("Order not sent to external system");
-            }
-
-            var externalOrder = await _externalEmission.GetEmissionInfo(localOrder.ExternalGuid.Value);
-
-            if (externalOrder == null)
-            {
-                return BadRequest("Something went wrong");
-            }
-            if (externalOrder.Content == null)
-            {
-                return NotFound("No content");
-            }
-
-            localOrder.Status = externalOrder.Content.status switch
-            {
-                0 => -2, //saved_error
-                1 => 2, //saved
-                3 => 3, //executing
-                4 => 4, //available
-                5 => -3, //failed
-                6 => 5, //done
-                _ => -4 //unknown
-            };
-            localOrder.StatusHistoryJson.Append( 
-                new StatusHistory { Status = 0, StatusDate = DateTimeOffset.UtcNow }
-                );
-            _context.Entry(localOrder).State = EntityState.Modified;
-            _context.SaveChanges();
-
-            return Ok(localOrder);
+            _logger.LogWarning($"Order with ID {id} not found.");
+            return NotFound();
         }
 
-        [HttpPost("external/{id}/process")]
-        public async Task<ActionResult> ProcessCodeEmission(string id)
+        if (localOrder.ExternalGuid == null)
         {
-            var localOrder = await _context.CodeOrders.FindAsync(id);
-            if (localOrder == null)
-                return BadRequest("Order not found");
-            if (localOrder.Status != 2)
-                return BadRequest("Incorrect order status");
-            if (localOrder.ExternalGuid == null)
-                return BadRequest("Incorrect order status");
-            var response = await _externalEmission.ProcessCodeEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
-            return Ok();
+            _logger.LogWarning($"Order with ID {id} has no external GUID.");
+            return BadRequest("Order not sent to external system.");
         }
 
-        [HttpPost("external/{id}/download")]
-        public async Task<ActionResult> DownloadCodesFromOrder(string id)
+        var externalOrder = await _externalEmission.GetEmissionInfo(localOrder.ExternalGuid.Value);
+
+        if (!externalOrder.Success || externalOrder.Content == null)
         {
-            var localOrder = await _context.CodeOrders.FindAsync(id);
-            if (localOrder == null)
-                return BadRequest("Order not found");
-            if (localOrder.Status != 4)
-                return BadRequest("Incorrect order status");
-            if (localOrder.ExternalGuid == null)
-                return BadRequest("Incorrect order status");
-            var response = await _externalEmission.GetCodesFromEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
-            if(!response.Success)
-                return BadRequest(response.Message);
-            if (response.Content == null)
-                return BadRequest("Lack of content");
-            if (response.Content.codes == null)
-                return BadRequest("Lack of content");
-            _context.CodeOrdersContents.Add(new CodeOrderContent
-            {
-                CodeOrderId = localOrder.Id,
-                OrderContent = response.Content.codes
-            });
-
-            return Ok();
+            _logger.LogError($"Failed to fetch external order info for GUID {localOrder.ExternalGuid}.");
+            return BadRequest(externalOrder.Message ?? "Failed to fetch external order info.");
         }
+
+        localOrder.Status = externalOrder.Content.status switch
+        {
+            0 => -2, // saved_error
+            1 => 2,  // saved
+            3 => 3,  // executing
+            4 => 4,  // available
+            5 => -3, // failed
+            6 => 5,  // done
+            _ => -4  // unknown
+        };
+
+        localOrder.StatusHistoryJson = localOrder.StatusHistoryJson
+            .Append(new StatusHistory { Status = localOrder.Status, StatusDate = DateTimeOffset.UtcNow }).ToArray();
+
+        _context.Entry(localOrder).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
+
+        return Ok(localOrder);
+    }
+
+    [HttpPost("external/{id}/process")]
+    public async Task<ActionResult> ProcessCodeEmission(int id)
+    {
+        var localOrder = await _context.CodeOrders.FindAsync(id);
+
+        if (localOrder == null)
+        {
+            _logger.LogWarning($"Order with ID {id} not found.");
+            return BadRequest("Order not found.");
+        }
+
+        if (localOrder.Status != 2)
+        {
+            _logger.LogWarning($"Order with ID {id} has incorrect status for processing.");
+            return BadRequest("Incorrect order status.");
+        }
+
+        if (localOrder.ExternalGuid == null)
+        {
+            _logger.LogWarning($"Order with ID {id} has no external GUID.");
+            return BadRequest("Incorrect order status.");
+        }
+
+        var response = await _externalEmission.ProcessCodeEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
+
+        if (!response.Success)
+        {
+            _logger.LogError($"Failed to process emission for order {id}. Message: {response.Message}");
+            return BadRequest(response.Message);
+        }
+
+        localOrder.Status = 2;
+        localOrder.StatusHistoryJson = localOrder.StatusHistoryJson
+            .Append(new StatusHistory { Status = 2, StatusDate = DateTimeOffset.UtcNow }).ToArray();
+
+        _context.Entry(localOrder).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
+
+        return Ok();
+    }
+
+    [HttpPost("external/{id}/download")]
+    public async Task<ActionResult> GetCodesFromOrder(int id)
+    {
+        var localOrder = await _context.CodeOrders.FindAsync(id);
+
+        if (localOrder == null)
+        {
+            _logger.LogWarning($"Order with ID {id} not found.");
+            return BadRequest("Order not found.");
+        }
+
+        if ((localOrder.Status != 4)&&(localOrder.Status != 6))
+        {
+            _logger.LogWarning($"Order with ID {id} has incorrect status for downloading.");
+            return BadRequest("Incorrect order status.");
+        }
+
+        if (localOrder.ExternalGuid == null)
+        {
+            _logger.LogWarning($"Order with ID {id} has no external GUID.");
+            return BadRequest("Incorrect order status.");
+        }
+
+        var response = await _externalEmission.GetCodesFromEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
+
+        if (!response.Success || response.Content?.codes == null)
+        {
+            _logger.LogError($"Failed to download codes for order {id}. Message: {response.Message}");
+            return BadRequest(response.Message ?? "Failed to download codes.");
+        }
+
+        _context.CodeOrdersContents.Add(new CodeOrderContent
+        {
+            CodeOrderId = localOrder.Id,
+            OrderContent = response.Content.codes,
+            RecordDate = DateTimeOffset.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+
+        return Ok();
+    }
+
+    [HttpPost("{id}/download")]
+    public async Task<IActionResult> DownloadOrderContent(int id, [FromQuery] string user)
+    {
+        var localOrder = await _context.CodeOrders
+            .Include(o => o.Content)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
+        if (localOrder?.Content?.OrderContent == null)
+        {
+            _logger.LogWarning($"Order content for ID {id} not found.");
+            return NotFound();
+        }
+
+        localOrder.Content.DownloadHistory = new DownloadHistory
+        {
+            DownloadTime = DateTimeOffset.UtcNow,
+            User = user
+        };
+
+        await _context.SaveChangesAsync();
+
+        var content = string.Join(Environment.NewLine, localOrder.Content.OrderContent);
+        return File(Encoding.UTF8.GetBytes(content), "text/plain", $"codes_{id}.txt");
     }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Serilog;
 using TJConnector.Web.Services.Contracts;
 using TJConnector.Web.Services.Implementation;
 
@@ -14,6 +15,7 @@ builder.Services.AddScoped(sp => new HttpClient
 });
 
 builder.Services.AddScoped<IProductService, ProductService>();
+
 
 
 var app = builder.Build();

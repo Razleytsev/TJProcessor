@@ -1,58 +1,168 @@
-﻿@page "/emission"
-@using System.Net.Http.Headers
-@using System.Text
-@using System.Text.Json
+﻿@page "/orders"
+@inject IOrderService OrderService
+@inject HttpClient HttpClient
 
-@inject HttpClient Http
+<h3>Orders</h3>
 
-@functions {
-    private IEnumerable<Item> Items = [];
+<div class="container">
+    <div class="table-container">
+        @if (orders == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <CustomTable Items="orders" Columns="columns" OnRowClick="OnOrderClick" />
+        }
+    </div>
+    <div class="details-container">
+        @if (selectedOrder != null)
+        {
+            <h4>Order Information</h4>
+            <div>
+                <p><strong>ID:</strong> @selectedOrder.Id</p>
+                <p><strong>Status:</strong> @selectedOrder.Status</p>
+                <p><strong>Description:</strong> @selectedOrder.Description</p>
+                <p><strong>User:</strong> @selectedOrder.User</p>
+                <p><strong>External GUID:</strong> @selectedOrder.ExternalGuid</p>
+            </div>
+            <button @onclick="ProcessOrder" disabled="@(selectedOrder.Status != 2)">Process Order</button>
+            <button @onclick="DownloadCodes" disabled="@(selectedOrder.Status != 4)">Download Codes</button>
+            <button @onclick="DownloadContent" disabled="@(selectedOrder.Content == null)">Download Content</button>
+        }
+        else
+        {
+            <p>Select an order to view details.</p>
+        }
+    </div>
+</div>
+
+<button @onclick="ShowCreateOrderModal">Create New Order</button>
+
+@if (showCreateOrderModal)
+{
+    <div class="modal">
+        <div class="modal-content">
+            <h4>Create New Order</h4>
+            <EditForm Model="@newOrderForm" OnValidSubmit="CreateOrder">
+                <InputNumber @bind-Value="newOrderForm.CodesCount" max="100000" />
+                <InputSelect @bind-Value="newOrderForm.ProductUuid">
+                    @foreach (var product in products)
+                    {
+                        <option value="@product.ExternalUid">@product.Name</option>
+                    }
+                </InputSelect>
+                <InputSelect @bind-Value="newOrderForm.MarkingLineUuid">
+                    @foreach (var line in markingLines)
+                    {
+                        <option value="@line.Uuid">@line.Name</option>
+                    }
+                </InputSelect>
+                <InputSelect @bind-Value="newOrderForm.FactoryUuid">
+                    @foreach (var factory in factories)
+                    {
+                        <option value="@factory.Uuid">@factory.Name</option>
+                    }
+                </InputSelect>
+                <InputSelect @bind-Value="newOrderForm.Type">
+                    @foreach (var product in products)
+                    {
+                        <option value="@product.Type">@product.Type</option>
+                    }
+                </InputSelect>
+                <button type="submit">Create</button>
+                <button type="button" @onclick="HideCreateOrderModal">Cancel</button>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@code {
+    private IEnumerable<CodeOrder>? orders;
+    private CodeOrder? selectedOrder;
+    private List<CustomTable<CodeOrder>.ColumnDefinition<CodeOrder>> columns = new();
+    private bool showCreateOrderModal = false;
+    private OrderCreateForm newOrderForm = new();
+    private List<Product> products = new();
+    private List<Factory> factories = new();
+    private List<MarkingLine> markingLines = new();
 
     protected override async Task OnInitializedAsync()
     {
-        Items = await FetchData();
+        orders = await OrderService.GetOrdersAsync();
+        columns = new()
+        {
+            new() { Header = "ID", Value = o => o.Id },
+            new() { Header = "Status", Value = o => o.Status },
+            new() { Header = "Description", Value = o => o.Description },
+            new() { Header = "User", Value = o => o.User },
+            new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
+        };
+
+        products = await HttpClient.GetFromJsonAsync<List<Product>>("api/product") ?? new();
+        factories = await HttpClient.GetFromJsonAsync<List<Factory>>("api/factory") ?? new();
+        markingLines = await HttpClient.GetFromJsonAsync<List<MarkingLine>>("api/markingline") ?? new();
+
+        newOrderForm.ProductUuid = products.FirstOrDefault()?.ExternalUid ?? Guid.Empty;
+        newOrderForm.MarkingLineUuid = markingLines.FirstOrDefault()?.Uuid ?? Guid.Empty;
+        newOrderForm.FactoryUuid = factories.FirstOrDefault()?.Uuid ?? Guid.Empty;
+        newOrderForm.Type = products.FirstOrDefault()?.Type ?? 0;
     }
 
-
-    private async Task<IEnumerable<Item>> FetchData()
+    private void OnOrderClick(CodeOrder order)
     {
-        var username = "PEpk1O-cQs6cAouT2DxMvQ-0:mar_Z4i9cHGkTFuEtQRh/0n5pg_Z4i9cHGkTFuEtQRh/0n5pg_SgR8u0vNhtxZgYGlwRmod/0Oj5LVcc4IcNCs5CpQIeRuJIPZoLhcswzUg0DELEwPxrvF9i1YrvqDJ3621JbhbA";
-         
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}")));
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://pub-api.mark.tj:5230/markingCode/emission/find");
-        var content = new StringContent("{\r\n    \"filters\": \r\n        {\r\n            \"factoryUuid\": [\"326e5c13-4280-4078-be01-ebed9d73716a\"]\r\n        },\r\n    \"limit\": 20,\r\n    \"offset\": 0\r\n}", null, "application/json");
-        request.Content = content;
-        var response = await client.SendAsync(request);
-
-        if (!response.IsSuccessStatusCode)
-            return [];
-
-        var responseContent = await response.Content.ReadAsStringAsync();
-        var apiResponse = JsonSerializer.Deserialize<ApiResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-         
-        return apiResponse?.Items ?? [];
+        selectedOrder = order;
     }
 
-
-
-
-
-    public class ApiResponse
+    private async Task ProcessOrder()
     {
-        public List<Item> Items { get; set; } = new();
-        public int Total { get; set; }
+        if (selectedOrder?.ExternalGuid != null)
+        {
+            var result = await OrderService.ProcessOrderAsync(selectedOrder.ExternalGuid.Value);
+            if (result.Success)
+            {
+                selectedOrder.Status = 2;
+            }
+        }
     }
 
-    public class Item
+    private async Task DownloadCodes()
     {
-        public string id { get; set; }
-        public string uuid { get; set; }
-        public string gtin { get; set; }
-        public int status { get; set; }
-        public string? finishedAt { get; set; }
-        public int codesCount { get; set; }
+        if (selectedOrder?.ExternalGuid != null)
+        {
+            var result = await OrderService.DownloadCodesAsync(selectedOrder.ExternalGuid.Value);
+            if (result.Success)
+            {
+                selectedOrder.Status = 4;
+            }
+        }
+    }
+
+    private async Task DownloadContent()
+    {
+        if (selectedOrder != null)
+        {
+            await OrderService.DownloadOrderContentAsync(selectedOrder.Id, "User");
+        }
+    }
+
+    private void ShowCreateOrderModal()
+    {
+        showCreateOrderModal = true;
+    }
+
+    private void HideCreateOrderModal()
+    {
+        showCreateOrderModal = false;
+    }
+
+    private async Task CreateOrder()
+    {
+        var result = await OrderService.CreateOrderAsync(newOrderForm);
+        if (result.Success)
+        {
+            orders = await OrderService.GetOrdersAsync();
+            showCreateOrderModal = false;
+        }
     }
 }
-
-<CustomTable1 Data="Items" />

@@ -11,6 +11,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Serilog" Version="4.2.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SharedLibrary\TJConnector.SharedLibrary.csproj" />
     <ProjectReference Include="..\TJConnector.Postgres\TJConnector.Postgres.csproj" />
     <ProjectReference Include="..\TJConnector.StateSystem\TJConnector.StateSystem.csproj" />
   </ItemGroup>
