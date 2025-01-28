@@ -46,10 +46,20 @@
     private ColumnDefinition<TItem>? SortColumn { get; set; }
     private bool SortAscending { get; set; } = true;
 
+    protected override void OnInitialized()
+    {
+        // Set the default sort column to the first column
+        if (Columns.Any())
+        {
+            SortColumn = Columns.First();
+            SortAscending = true; // Default to ascending order
+        }
+    }
+
     private IEnumerable<TItem> FilteredItems => Items
         .Where(item => Columns.Any(column => column.Value(item)?.ToString()?.Contains(FilterText, StringComparison.OrdinalIgnoreCase) == true))
-        .OrderBy(item => SortColumn?.Value(item) ?? "")
-        .ThenBy(item => SortColumn != null && !SortAscending ? "" : "");
+        .OrderBy(item => SortColumn != null && !SortAscending ? null : SortColumn?.Value(item))
+        .ThenByDescending(item => SortColumn != null && !SortAscending ? SortColumn?.Value(item) : null);
 
     private void SortBy(ColumnDefinition<TItem> column)
     {

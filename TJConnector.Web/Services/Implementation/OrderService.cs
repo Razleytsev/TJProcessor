@@ -21,41 +21,27 @@ public class OrderService : IOrderService
 
     public async Task<IEnumerable<CodeOrder>> GetOrdersAsync()
     {
-        try
-        {
-            var response = await _httpClient.GetAsync("api/order");
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<IEnumerable<CodeOrder>>() ?? Array.Empty<CodeOrder>();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to fetch orders.");
-            throw;
-        }
+        var response = await _httpClient.GetAsync("api/order");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<IEnumerable<CodeOrder>>() ?? Array.Empty<CodeOrder>();
     }
 
     public async Task<CodeOrder> GetOrderByIdAsync(int id)
     {
-        try
-        {
-            var response = await _httpClient.GetAsync($"api/order/{id}");
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<CodeOrder>() ?? throw new InvalidOperationException("Order not found.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to fetch order with ID {id}.");
-            throw;
-        }
+        var response = await _httpClient.GetAsync($"api/order/{id}");
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CodeOrder>() ?? throw new InvalidOperationException("Order not found.");
     }
 
-    public async Task<CustomResult<DocumentCreateResponse>> CreateOrderAsync(OrderCreateForm form)
+    public async Task<CustomResult<CodeOrder>> CreateOrderAsync(OrderCreateForm form)
     {
         try
         {
             var response = await _httpClient.PostAsJsonAsync("api/order", form);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<CustomResult<DocumentCreateResponse>>() ?? throw new InvalidOperationException("Failed to create order.");
+            var responseContent = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation("CreateOrderAsync Response: {Response}", responseContent);
+            return await response.Content.ReadFromJsonAsync<CustomResult<CodeOrder>>() ?? throw new InvalidOperationException("Failed to create order.");
         }
         catch (Exception ex)
         {
@@ -66,46 +52,54 @@ public class OrderService : IOrderService
 
     public async Task<CustomResult<ProcessResponse>> ProcessOrderAsync(int uuid)
     {
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync($"api/order/external/{uuid}/process", new { });
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<CustomResult<ProcessResponse>>() ?? throw new InvalidOperationException("Failed to process order.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to process order with UUID {uuid}.");
-            throw;
-        }
+        var response = await _httpClient.PostAsJsonAsync($"api/order/external/{uuid}/process", new { });
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CustomResult<ProcessResponse>>() ?? throw new InvalidOperationException("Failed to process order.");
     }
 
     public async Task<CustomResult<EmissionCodesResponse>> DownloadCodesAsync(int uuid)
     {
-        try
-        {
-            var response = await _httpClient.PostAsJsonAsync($"api/order/external/{uuid}/download", new { });
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<CustomResult<EmissionCodesResponse>>() ?? throw new InvalidOperationException("Failed to download codes.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, $"Failed to download codes for UUID {uuid}.");
-            throw;
-        }
+        var response = await _httpClient.PostAsJsonAsync($"api/order/external/{uuid}/download", new { });
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CustomResult<EmissionCodesResponse>>() ?? throw new InvalidOperationException("Failed to download codes.");
     }
 
     public async Task<IActionResult> DownloadOrderContentAsync(int id, string user)
     {
+        var response = await _httpClient.PostAsJsonAsync($"api/order/{id}/download?user={user}", new { });
+        response.EnsureSuccessStatusCode();
+        return new FileContentResult(await response.Content.ReadAsByteArrayAsync(), "text/plain");
+    }
+    public async Task<CustomResult<CodeOrder>> GetExternalOrderByIdAsync(int id)
+    {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync($"api/order/{id}/download?user={user}", new { });
+            // Call the API endpoint to fetch external order status
+            var response = await _httpClient.GetAsync($"api/order/external/{id}");
+
+            // Ensure the request was successful
             response.EnsureSuccessStatusCode();
-            return new FileContentResult(await response.Content.ReadAsByteArrayAsync(), "text/plain");
+
+            // Deserialize the response content
+            var result = await response.Content.ReadFromJsonAsync<CustomResult<CodeOrder>>();
+
+            if (result == null)
+            {
+                _logger.LogError("Failed to deserialize external order response.");
+                return new CustomResult<CodeOrder> { Success = false, Message = "Failed to deserialize response." };
+            }
+
+            return result;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Failed to fetch external order status for ID {Id}.", id);
+            return new CustomResult<CodeOrder> { Success = false, Message = ex.Message };
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Failed to download content for order {id}.");
-            throw;
+            _logger.LogError(ex, "An unexpected error occurred while fetching external order status for ID {Id}.", id);
+            return new CustomResult<CodeOrder> { Success = false, Message = "An unexpected error occurred." };
         }
     }
 }

@@ -28,7 +28,7 @@ public class MetadataController : ControllerBase
     {
         return await _context.Factories.ToListAsync();
     }
-    [HttpGet("arkingline")]
+    [HttpGet("markingline")]
     public async Task<ActionResult<IEnumerable<MarkingLine>>> GetMarkingLine()
     {
         return await _context.MarkingLines.ToListAsync();

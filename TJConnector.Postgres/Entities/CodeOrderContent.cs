@@ -7,7 +7,7 @@ namespace TJConnector.Postgres.Entities
         public int Id { get; set; }
 
         public int CodeOrderId { get; set; }
-        public CodeOrder? CodeOrder { get; set; }
+        //public CodeOrder? CodeOrder { get; set; }
         public string[] OrderContent { get; set; } = [];
         public DateTimeOffset RecordDate { get; set; }
         public DownloadHistory? DownloadHistory { get; set; }

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using TJConnector.Postgres.Entities;
 using Newtonsoft.Json;
+using System.Reflection.Emit;
 
 namespace TJConnector.Postgres.Configurations;
 
@@ -19,5 +20,8 @@ internal sealed class CodeOrderConfiguration : IEntityTypeConfiguration<CodeOrde
         builder.Property(o => o.RecordDate).HasDefaultValueSql("NOW()");
         builder.Property(o => o.User).HasMaxLength(20);
         builder.Property(o => o.Description).HasMaxLength(100);
+        //builder.HasOne(co => co.Content)
+        //    .WithOne(coc => coc.CodeOrderId)
+        //    .HasForeignKey<CodeOrderContent>(coc => coc.CodeOrderId);
     }
 }

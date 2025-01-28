@@ -19,7 +19,7 @@ namespace TJConnector.Web.Services.Implementation
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/order");
+                var response = await _httpClient.GetAsync("api/factories");
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<IEnumerable<Factory>>() ?? Array.Empty<Factory>();
             }
@@ -34,7 +34,7 @@ namespace TJConnector.Web.Services.Implementation
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/order");
+                var response = await _httpClient.GetAsync("api/location");
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<IEnumerable<Location>>() ?? Array.Empty<Location>();
             }
@@ -49,7 +49,7 @@ namespace TJConnector.Web.Services.Implementation
         {
             try
             {
-                var response = await _httpClient.GetAsync("api/order");
+                var response = await _httpClient.GetAsync("api/markingline");
                 response.EnsureSuccessStatusCode();
                 return await response.Content.ReadFromJsonAsync<IEnumerable<MarkingLine>>() ?? Array.Empty<MarkingLine>();
             }

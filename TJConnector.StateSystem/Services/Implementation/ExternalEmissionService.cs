@@ -80,7 +80,7 @@ namespace TJConnector.StateSystem.Services.Implementation
             }
         }
 
-        public async Task<CustomResult<EmissionCodesResponse>> GetCodesFromEmission(ProcessDocument body)
+        public async Task<CustomResult<EmissionCodesResponse>> GetCodesFromEmission(DownloadCodesRequest body)
         {
             if (body == null)
             {
