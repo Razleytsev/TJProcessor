@@ -197,9 +197,9 @@
         {
             isProcessing = true;
             await OrderService.ProcessOrderAsync(selectedOrder.Id);
-            await Task.Delay(3000); // Disable button for 3 seconds
+            await Task.Delay(3000);
             isProcessing = false;
-            await Task.Delay(1000); // Wait 1 second before updating the order information
+            await Task.Delay(1000);
             await UpdateExternalOrderStatus(selectedOrder.Id);
             selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
         }
@@ -213,7 +213,7 @@
             await OrderService.DownloadCodesAsync(selectedOrder.Id);
             await Task.Delay(3000); // Disable button for 3 seconds
             isDownloadingCodes = false;
-            await Task.Delay(1000); // Wait 1 second before updating the order information
+            await Task.Delay(1000);
             await UpdateExternalOrderStatus(selectedOrder.Id);
             selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
         }
