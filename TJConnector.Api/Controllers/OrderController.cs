@@ -146,7 +146,7 @@ public class OrderController : ControllerBase
     }
 
     [HttpPost("external/{id}/download")]
-    public async Task<ActionResult> GetCodesFromOrder(int id)
+    public async Task<ActionResult<CodeOrder>> GetCodesFromOrder(int id)
     {
         var localOrder = await _context.CodeOrders.FindAsync(id);
           // ?? throw new ArgumentNullException($"Order ({id}) not found.");
@@ -188,7 +188,7 @@ public class OrderController : ControllerBase
 
         await _context.SaveChangesAsync();
 
-        return Ok();
+        return Ok(localOrder);
     }
 
     [HttpPost("{id}/download")]

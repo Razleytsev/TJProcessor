@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using TJConnector.Postgres.Entities;
 using TJConnector.SharedLibrary.DTOs.Forms;
 using TJConnector.StateSystem.Model.ExternalResponses.Container;
@@ -33,7 +34,7 @@ public class OrderService : IOrderService
         return await response.Content.ReadFromJsonAsync<CodeOrder>() ?? throw new InvalidOperationException("Order not found.");
     }
 
-    public async Task<CustomResult<CodeOrder>> CreateOrderAsync(OrderCreateForm form)
+    public async Task<CodeOrder> CreateOrderAsync(OrderCreateForm form)
     {
         try
         {
@@ -41,7 +42,7 @@ public class OrderService : IOrderService
             response.EnsureSuccessStatusCode();
             var responseContent = await response.Content.ReadAsStringAsync();
             _logger.LogInformation("CreateOrderAsync Response: {Response}", responseContent);
-            return await response.Content.ReadFromJsonAsync<CustomResult<CodeOrder>>() ?? throw new InvalidOperationException("Failed to create order.");
+            return await response.Content.ReadFromJsonAsync<CodeOrder>() ?? throw new InvalidOperationException("Failed to create order.");
         }
         catch (Exception ex)
         {
@@ -50,18 +51,18 @@ public class OrderService : IOrderService
         }
     }
 
-    public async Task<CustomResult<ProcessResponse>> ProcessOrderAsync(int uuid)
+    public async Task<ProcessResponse> ProcessOrderAsync(int uuid)
     {
         var response = await _httpClient.PostAsJsonAsync($"api/order/external/{uuid}/process", new { });
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<CustomResult<ProcessResponse>>() ?? throw new InvalidOperationException("Failed to process order.");
+        return await response.Content.ReadFromJsonAsync<ProcessResponse>() ?? throw new InvalidOperationException("Failed to process order.");
     }
 
-    public async Task<CustomResult<EmissionCodesResponse>> DownloadCodesAsync(int uuid)
+    public async Task<CodeOrder> DownloadCodesAsync(int uuid)
     {
         var response = await _httpClient.PostAsJsonAsync($"api/order/external/{uuid}/download", new { });
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<CustomResult<EmissionCodesResponse>>() ?? throw new InvalidOperationException("Failed to download codes.");
+        return await response.Content.ReadFromJsonAsync<CodeOrder>() ?? throw new InvalidOperationException("Failed to download codes.");
     }
 
     public async Task<IActionResult> DownloadOrderContentAsync(int id, string user)
