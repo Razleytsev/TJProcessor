@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using System.Net.Http.Headers;
 using System.Text;
+using TJConnector.Api.Hubs;
 using TJConnector.Postgres;
 using TJConnector.StateSystem.Helpers;
 using TJConnector.StateSystem.Services.Contracts;
@@ -39,6 +41,14 @@ builder.Services.AddScoped<IExternalContainer, ExternalContainerService>();
 builder.Services.AddScoped<IExternalEmission, ExternalEmissionService>();
 builder.Services.AddScoped<IExternalProduct, ExternalProductService>();
 
+//builder.Services.AddSignalR();
+//builder.Services.AddResponseCompression(opts =>
+//{
+//    opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+//        ["application/octet-stream"]);
+//});
+
+
 var app = builder.Build();
 
 
@@ -53,5 +63,8 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+//app.UseResponseCompression(); 
+//app.MapHub<OrderHub>("/orderhub");
 
 app.Run();

@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System.Net.Http.Json;
 using TJConnector.StateSystem.Helpers;
 using TJConnector.StateSystem.Model.ExternalRequests.Generic;
@@ -215,8 +216,17 @@ namespace TJConnector.StateSystem.Services.Implementation
                     return new CustomResult<ProcessResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
                 }
 
-                var result = await response.Content.ReadFromJsonAsync<ProcessResponse>();
-                return new CustomResult<ProcessResponse> { Content = result, Success = true };
+                var result = await response.Content.ReadFromJsonAsync<Dictionary<Guid,ProcessMessage>>();
+                var result2 = new ProcessResponse() { ProcessResult = new Dictionary<Guid, ProcessMessage?>
+                    {
+                        {  
+                            result.FirstOrDefault().Key, 
+                            result.FirstOrDefault().Value
+                        } 
+                    }
+                };
+
+                return new CustomResult<ProcessResponse> { Content = result2, Success = true };
             }
             catch (Exception ex)
             {

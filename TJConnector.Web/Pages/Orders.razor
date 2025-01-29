@@ -1,4 +1,5 @@
 ﻿@page "/emission"
+@using TJConnector.SharedLibrary.DTOs.Forms
 @inject IOrderService OrderService
 @inject IProductService ProductService
 @inject IMetadataService MetadataService
@@ -26,8 +27,8 @@
             <div>
                 <p><strong>ID:</strong> @selectedOrder.Id</p>
                 <p><strong>Status:</strong> @selectedOrder.Status</p>
+                <p><strong>Gtin:</strong> @selectedOrder.Product?.Gtin</p>
                 <p><strong>Created At:</strong> @selectedOrder.RecordDate</p>
-                <p><strong>Product ID:</strong> @selectedOrder.ProductId</p>
                 <p><strong>Count:</strong> @selectedOrder.Count</p>
                 <p><strong>External GUID:</strong> @selectedOrder.ExternalGuid</p>
             </div>
@@ -144,6 +145,7 @@
     private bool isDownloadingCodes = false;
     private bool isDownloadingContent = false;
 
+
     protected override async Task OnInitializedAsync()
     {
         orders = await OrderService.GetOrdersAsync();
@@ -158,8 +160,8 @@
         {
             new() { Header = "ID", Value = o => o.Id },
             new() { Header = "Status", Value = o => o.Status },
+            new() { Header = "Gtin", Value = o => o.Product?.Gtin },
             new() { Header = "Created At", Value = o => o.RecordDate },
-            new() { Header = "Product ID", Value = o => o.ProductId },
             new() { Header = "Count", Value = o => o.Count },
             new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
         };
@@ -167,21 +169,21 @@
 
     private async Task OnOrderClick(CodeOrder order)
     {
+        await UpdateExternalOrderStatus(order.Id);
         selectedOrder = await OrderService.GetOrderByIdAsync(order.Id);
-        await UpdateExternalOrderStatus(selectedOrder.Id);
     }
 
     private async Task UpdateExternalOrderStatus(int orderId)
     {
         var result = await OrderService.GetExternalOrderByIdAsync(orderId);
-        if (result.Success)
+        if (result is not null)
         {
-            selectedOrder = result.Content;
+            selectedOrder = result;
             orders = await OrderService.GetOrdersAsync();
         }
         else
         {
-            Console.WriteLine("Failed to update external order status: " + result.Message);
+            Console.WriteLine("Failed to update external order status: " + orderId);
         }
     }
 
@@ -207,28 +209,13 @@
     {
         if (selectedOrder != null)
         {
-            isDownloadingContent = true;
-            try
-            {
-                // Fetch the file from the server
-                var fileResult = await OrderService.DownloadOrderContentAsync(selectedOrder.Id, "user");
-
-                // Convert the file content to a byte array
-                var fileBytes = await fileResult.Content.ReadAsByteArrayAsync();
-
-                // Trigger the file download using JavaScript interop
-                await JSRuntime.InvokeVoidAsync("downloadFile", $"Order_{selectedOrder.Id}_Content.txt", fileBytes);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error downloading file: {ex.Message}");
-            }
-            finally
-            {
-                isDownloadingContent = false;
-                await UpdateExternalOrderStatus(selectedOrder.Id);
-                selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
-            }
+            isDownloadingCodes = true;
+            await OrderService.DownloadCodesAsync(selectedOrder.Id);
+            await Task.Delay(3000); // Disable button for 3 seconds
+            isDownloadingCodes = false;
+            await Task.Delay(1000); // Wait 1 second before updating the order information
+            await UpdateExternalOrderStatus(selectedOrder.Id);
+            selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
         }
     }
 
@@ -236,13 +223,25 @@
     {
         if (selectedOrder != null)
         {
-            isDownloadingContent = true;
-            await OrderService.DownloadOrderContentAsync(selectedOrder.Id, "user");
-            await Task.Delay(3000); // Disable button for 3 seconds
-            isDownloadingContent = false;
-            await UpdateExternalOrderStatus(selectedOrder.Id);
-            selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
+            var result = await OrderService.DownloadOrderContentAsync(selectedOrder.Id, "user");
+
+            if (result is Microsoft.AspNetCore.Mvc.FileContentResult fileContentResult)
+            {
+                var fileName = $"codes_{selectedOrder.ExternalGuid}.txt";
+                var fileBytes = fileContentResult.FileContents;
+
+                // Trigger the file download
+                await DownloadFileAsync(fileName, fileBytes);
+            }
         }
+    }
+
+    private async Task DownloadFileAsync(string fileName, byte[] content)
+    {
+        var fileStream = new System.IO.MemoryStream(content);
+        using var streamRef = new DotNetStreamReference(fileStream);
+
+        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
     }
 
     private void ShowCreateOrderModal() => showCreateOrderModal = true;
@@ -263,16 +262,18 @@
             if (result.Success)
             {
                 orders = await OrderService.GetOrdersAsync();
-                showCreateOrderModal = false; // Close the modal after successful creation
+                showCreateOrderModal = false;
             }
             else
             {
                 Console.WriteLine("Failed to create order: " + result.Message);
+                showCreateOrderModal = false;
             }
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error creating order: {ex.Message}");
+            showCreateOrderModal = false;
         }
     }
 

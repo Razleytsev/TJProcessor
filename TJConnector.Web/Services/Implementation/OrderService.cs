@@ -70,23 +70,18 @@ public class OrderService : IOrderService
         response.EnsureSuccessStatusCode();
         return new FileContentResult(await response.Content.ReadAsByteArrayAsync(), "text/plain");
     }
-    public async Task<CustomResult<CodeOrder>> GetExternalOrderByIdAsync(int id)
+    public async Task<CodeOrder> GetExternalOrderByIdAsync(int id)
     {
         try
         {
-            // Call the API endpoint to fetch external order status
             var response = await _httpClient.GetAsync($"api/order/external/{id}");
-
-            // Ensure the request was successful
             response.EnsureSuccessStatusCode();
-
-            // Deserialize the response content
-            var result = await response.Content.ReadFromJsonAsync<CustomResult<CodeOrder>>();
+            var result = await response.Content.ReadFromJsonAsync<CodeOrder>();
 
             if (result == null)
             {
                 _logger.LogError("Failed to deserialize external order response.");
-                return new CustomResult<CodeOrder> { Success = false, Message = "Failed to deserialize response." };
+                throw new InvalidOperationException("Failed to deserialize external order response."); 
             }
 
             return result;
@@ -94,12 +89,12 @@ public class OrderService : IOrderService
         catch (HttpRequestException ex)
         {
             _logger.LogError(ex, "Failed to fetch external order status for ID {Id}.", id);
-            return new CustomResult<CodeOrder> { Success = false, Message = ex.Message };
+            throw new InvalidOperationException(ex.Message);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unexpected error occurred while fetching external order status for ID {Id}.", id);
-            return new CustomResult<CodeOrder> { Success = false, Message = "An unexpected error occurred." };
+            throw new InvalidOperationException(ex.Message);
         }
     }
 }
