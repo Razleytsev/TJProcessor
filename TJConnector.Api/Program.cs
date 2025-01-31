@@ -40,6 +40,8 @@ builder.Services.AddScoped<CustomHttpClient>();
 builder.Services.AddScoped<IExternalContainer, ExternalContainerService>();
 builder.Services.AddScoped<IExternalEmission, ExternalEmissionService>();
 builder.Services.AddScoped<IExternalProduct, ExternalProductService>();
+builder.Services.AddSingleton<ISQLConnectionFactory, SQLConnectionFactory>();
+builder.Services.AddScoped<IExternalDBData, ExternalDbData>();
 
 //builder.Services.AddSignalR();
 //builder.Services.AddResponseCompression(opts =>

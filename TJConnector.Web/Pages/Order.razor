@@ -17,7 +17,7 @@
         }
         else
         {
-            <CustomTable Items="orders" Columns="columns" OnRowClick="EventCallback.Factory.Create<CodeOrder>(this, OnOrderClick)" />
+            <CustomTable Items="orders" Columns="columns" OnRowClick="EventCallback.Factory.Create<CodeOrder>(this, OnOrderClick)" SelectedItem="selectedOrder" />
         }
     </div>
     <div class="details-container" style="width: 25%;">

@@ -7,9 +7,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="ContainerContentQuery.sql" />
+    <None Remove="ContainerInfoQuery.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="ContainerContentQuery.sql" />
+    <EmbeddedResource Include="ContainerInfoQuery.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Polly" Version="8.5.1" />
+    <PackageReference Include="System.Data.SqlClient" Version="4.9.0" />
   </ItemGroup>
 
 </Project>

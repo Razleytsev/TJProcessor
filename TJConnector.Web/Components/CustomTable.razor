@@ -21,7 +21,7 @@
         <tbody>
             @foreach (var item in FilteredItems)
             {
-                <tr @onclick="() => OnRowClick.InvokeAsync(item)">
+                <tr @onclick="() => OnRowClick.InvokeAsync(item)" class="@(GetRowClass(item))">
                     @foreach (var column in Columns)
                     {
                         <td>@column.Value(item)</td>
@@ -42,17 +42,19 @@
     [Parameter]
     public EventCallback<TItem> OnRowClick { get; set; }
 
+    [Parameter]
+    public TItem? SelectedItem { get; set; }
+
     private string FilterText { get; set; } = string.Empty;
     private ColumnDefinition<TItem>? SortColumn { get; set; }
     private bool SortAscending { get; set; } = true;
 
     protected override void OnInitialized()
     {
-        // Set the default sort column to the first column
         if (Columns.Any())
         {
             SortColumn = Columns.First();
-            SortAscending = true; // Default to ascending order
+            SortAscending = true; 
         }
     }
 
@@ -72,6 +74,11 @@
             SortColumn = column;
             SortAscending = true;
         }
+    }
+
+    private string GetRowClass(TItem item)
+    {
+        return SelectedItem != null && SelectedItem.Equals(item) ? "highlighted-row" : string.Empty;
     }
 
     public class ColumnDefinition<T>

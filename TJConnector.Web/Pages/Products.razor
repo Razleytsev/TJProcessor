@@ -11,7 +11,7 @@
         }
         else
         {
-            <CustomTable Items="products" Columns="columns" OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)" />
+            <CustomTable Items="products" Columns="columns" OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)" SelectedItem="selectedProduct" />
         }
     </div>
     <div class="details-container">
@@ -40,6 +40,7 @@
     private IEnumerable<Product>? products;
     private List<CustomTable<Product>.ColumnDefinition<Product>> columns = new();
     private ProductInfoResponse? selectedProductExternalInfo;
+    private Product? selectedProduct;
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,6 +75,7 @@
 
     private async Task OnProductClick(Product product)
     {
+        selectedProduct = product;
         try
         {
             var result = await ProductService.GetExternalProductByIdAsync(product.ExternalUid.ToString());
