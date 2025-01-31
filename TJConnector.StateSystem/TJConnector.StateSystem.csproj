@@ -12,8 +12,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="ContainerContentQuery.sql" />
-    <EmbeddedResource Include="ContainerInfoQuery.sql" />
+    <Content Include="ContainerContentQuery.sql" />
+    <Content Include="ContainerInfoQuery.sql" />
   </ItemGroup>
 
   <ItemGroup>

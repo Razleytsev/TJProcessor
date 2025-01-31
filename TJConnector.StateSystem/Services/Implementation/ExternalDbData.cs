@@ -57,18 +57,17 @@ namespace TJConnector.StateSystem.Services.Implementation
         private string LoadSQLStatement(string statementName)
         {
             string sqlStatement = string.Empty;
+            string filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, statementName);
 
-            string namespacePart = "TJConnector.StateSystem";
-            string resourceName = namespacePart + "." + statementName;
-
-            using (Stream stm = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName))
+            if (!File.Exists(filePath))
             {
-                if (stm != null)
-                {
-                    sqlStatement = new StreamReader(stm).ReadToEnd();
-                }
+                sqlStatement = $"--placeholder. put here your query. for {statementName}\nSELECT * FROM Table;"; 
+                File.WriteAllText(filePath, sqlStatement); 
             }
-
+            else
+            {
+                sqlStatement = File.ReadAllText(filePath);
+            }
             return sqlStatement;
         }
     }
