@@ -51,7 +51,7 @@
                 </tbody>
             </table>
             <button class="btn btn-secondary" @onclick="ProcessOrder" disabled="@(!IsProcessButtonActive || isProcessing)">Process Order</button>
-            <button class="btn btn-secondary" @onclick="DownloadCodes" disabled="@(!IsDownloadCodesButtonActive || isDownloadingCodes)">Download Codes</button>
+            <button class="btn btn-secondary" @onclick="DownloadCodes" disabled="@(!IsDownloadCodesButtonActive || isDownloadingCodes)">Pull Codes</button>
             <button class="btn btn-secondary" @onclick="DownloadOrderContent" disabled="@(!IsDownloadContentButtonActive || isDownloadingContent)">Download Content</button>
         }
         else
@@ -298,5 +298,16 @@
         newOrderForm.ProductUuid = product.ExternalUid;
         newOrderForm.Type = (sbyte)product.Type;
         filteredProducts = null;
+    }
+
+    private string GetProductTypeString(int type)
+    {
+        return type switch
+        {
+            0 => "Pack",
+            1 => "Bundle",
+            2 => "Mastercase",
+            _ => "Unknown"
+        };
     }
 }

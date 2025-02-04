@@ -12,8 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="ContainerContentQuery.sql" />
-    <Content Include="ContainerInfoQuery.sql" />
+    <Content Include="ContainerContentQuery.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ContainerInfoQuery.sql">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>
