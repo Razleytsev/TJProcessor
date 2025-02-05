@@ -364,3 +364,6 @@ FodyWeavers.xsd
 /TJConnector.Api/appsettings.json
 /TJConnector.StateSystem/ContainerContentQuery.sql
 /TJConnector.StateSystem/ContainerInfoQuery.sql
+/TJConnector.StateSystem/ContainerInfoQuery.sql
+/TJConnector.StateSystem/ContainerContentQuery.sql
+/TJConnector.StateSystem/ContainerContentQuery.sql
