@@ -7,10 +7,10 @@
 
 <h3>Orders</h3>
 
-<button class="btn btn-primary" @onclick="ShowCreateOrderModal">Create New Order</button>
+<button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowCreateOrderModal">Create New Order</button>
 
 <div class="container">
-    <div class="table-container" style="width: 75%;">
+    <div class="table-container" style="width: 75%;font-size: 12px;">
         @if (orders == null)
         {
             <p>Loading...</p>
@@ -20,13 +20,13 @@
             <CustomTable Items="orders" Columns="columns" OnRowClick="EventCallback.Factory.Create<CodeOrder>(this, OnOrderClick)" SelectedItem="selectedOrder" />
         }
     </div>
-    <div class="details-container" style="width: 25%;">
+    <div class="details-container" style="width: 25%;font-size: 12px;">
         @if (selectedOrder != null)
         {
             <h4>Order Information</h4>
             <div>
-                <p><strong>ID:</strong> @selectedOrder.Id</p>
-                <p><strong>Status:</strong> @selectedOrder.Status</p>
+                <p><strong>Type:</strong> @GetProductTypeString(selectedOrder.Type)</p>
+                <p><strong>Status:</strong> @GetStatusTypeString(selectedOrder.Status)</p>
                 <p><strong>Gtin:</strong> @selectedOrder.Product?.Gtin</p>
                 <p><strong>Created At:</strong> @selectedOrder.RecordDate</p>
                 <p><strong>Count:</strong> @selectedOrder.Count</p>
@@ -44,15 +44,15 @@
                     @foreach (var history in selectedOrder.StatusHistoryJson)
                     {
                         <tr>
-                            <td>@history.Status</td>
-                            <td>@history.StatusDate</td>
+                            <td>@GetStatusTypeString(history.Status)</td>
+                            <td>@ToLocalTime(history.StatusDate)</td>
                         </tr>
                     }
                 </tbody>
             </table>
             <button class="btn btn-secondary" @onclick="ProcessOrder" disabled="@(!IsProcessButtonActive || isProcessing)">Process Order</button>
             <button class="btn btn-secondary" @onclick="DownloadCodes" disabled="@(!IsDownloadCodesButtonActive || isDownloadingCodes)">Pull Codes</button>
-            <button class="btn btn-secondary" @onclick="DownloadOrderContent" disabled="@(!IsDownloadContentButtonActive || isDownloadingContent)">Download Content</button>
+            <button class="btn btn-secondary" @onclick="DownloadOrderContent" disabled="@(!IsDownloadContentButtonActive || isDownloadingContent)">Download</button>
         }
         else
         {
@@ -63,7 +63,7 @@
 
 @if (showCreateOrderModal)
 {
-    <div class="modal" style="display: block;">
+    <div class="modal" style="display: block;font-size: 12px;">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -71,54 +71,80 @@
                     <button type="button" class="close" @onclick="CloseCreateOrderModal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <form>
-                        <div class="form-group">
-                            <label>GTIN</label>
-                            <input type="text" class="form-control" @bind="gtinInput" @oninput="OnGtinInput" />
-                            @if (filteredProducts != null && filteredProducts.Any())
-                            {
-                                <ul class="list-group">
-                                    @foreach (var product in filteredProducts)
-                                    {
-                                        <li class="list-group-item" @onclick="() => OnGtinSelected(product)">@product.Gtin</li>
-                                    }
-                                </ul>
-                            }
-                        </div>
-                        <div class="form-group">
-                            <label>Product ID</label>
-                            <input type="text" class="form-control" @bind="newOrderForm.ProductId" disabled />
-                        </div>
-                        <div class="form-group">
-                            <label>External UID</label>
-                            <input type="text" class="form-control" @bind="newOrderForm.ProductUuid" disabled />
-                        </div>
+                    <form>                        
                         <div class="form-group">
                             <label>Type</label>
-                            <input type="text" class="form-control" @bind="newOrderForm.Type" disabled />
-                        </div>
-                        <div class="form-group">
-                            <label>Factory</label>
-                            <select class="form-control" @bind="newOrderForm.FactoryUuid">
-                                @foreach (var factory in factories)
-                                {
-                                    <option value="@factory.ExternalUid">@factory.Name</option>
-                                }
+                            <select class="form-control" @onchange="OnTypeChange">
+                                <option value="Pack">Pack</option>
+                                <option value="Bundle">Bundle</option>
+                                <option value="Mastercase">Mastercase</option>
                             </select>
                         </div>
-                        <div class="form-group">
-                            <label>Marking Line</label>
-                            <select class="form-control" @bind="newOrderForm.MarkingLineUuid">
-                                @foreach (var markingLine in markingLines)
+                        @if (selectedType == "Mastercase")
+                        {
+                            <div class="form-group">
+                                <label>Count Codes</label>
+                                <input type="number" class="form-control" @bind="newOrderForm.CodesCount" max="10000" />
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <input type="text" class="form-control" @bind="newOrderForm.Description" />
+                            </div>
+                        }
+                        else if (selectedType == "Pack" || selectedType == "Bundle")
+                        {
+                            <div class="form-group" style="position: relative;">
+                                <label>GTIN</label>
+                                <input type="text" class="form-control" @bind="gtinInput" @oninput="OnGtinInput" />
+                                @if (filteredProducts != null && filteredProducts.Any())
                                 {
-                                    <option value="@markingLine.ExternalUid">@markingLine.Name</option>
+                                    <ul class="list-group" style="position: absolute; z-index: 1000; width: 100%;">
+                                        @foreach (var product in filteredProducts)
+                                        {
+                                            <li class="list-group-item" @onclick="() => OnGtinSelected(product)">@product.Gtin</li>
+                                        }
+                                    </ul>
                                 }
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Codes Count</label>
-                            <input type="number" class="form-control" @bind="newOrderForm.CodesCount" max="100000" />
-                        </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Product ID</label>
+                                <input type="text" class="form-control" @bind="newOrderForm.ProductId" disabled />
+                            </div>
+                            <div class="form-group">
+                                <label>External UID</label>
+                                <input type="text" class="form-control" @bind="newOrderForm.ProductUuid" disabled />
+                            </div>
+                            <div class="form-group">
+                                <label>Type</label>
+                                <input type="text" class="form-control" @bind="newOrderForm.Type" disabled />
+                            </div>
+                            <div class="form-group">
+                                <label>Factory</label>
+                                <select class="form-control" @bind="newOrderForm.FactoryUuid">
+                                    @foreach (var factory in factories)
+                                    {
+                                        <option value="@factory.ExternalUid">@factory.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Marking Line</label>
+                                <select class="form-control" @bind="newOrderForm.MarkingLineUuid">
+                                    @foreach (var markingLine in markingLines)
+                                    {
+                                        <option value="@markingLine.ExternalUid">@markingLine.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Codes Count</label>
+                                <input type="number" class="form-control" @bind="newOrderForm.CodesCount" max="10000" />
+                            </div>
+                            <div class="form-group">
+                                <label>Description</label>
+                                <input type="text" class="form-control" @bind="newOrderForm.Description" />
+                            </div>
+                        }
                     </form>
                 </div>
                 <div class="modal-footer">
@@ -128,7 +154,7 @@
             </div>
         </div>
     </div>
-}
+}   
 
 @code {
     private IEnumerable<CodeOrder>? orders;
@@ -140,11 +166,40 @@
     private IEnumerable<Factory>? factories;
     private IEnumerable<MarkingLine>? markingLines;
     private string gtinInput = string.Empty;
-    private IEnumerable<Product>? filteredProducts;
+    private IEnumerable<Product>? filteredProducts = new List<Product>();
     private bool isProcessing = false;
     private bool isDownloadingCodes = false;
     private bool isDownloadingContent = false;
 
+
+    private string? selectedType = "Pack";
+
+    private void OnTypeChange(ChangeEventArgs e)
+    {
+        selectedType = e.Value?.ToString() ?? "Pack";
+        if (selectedType == "Pack")
+        {
+            newOrderForm.Type = 0;
+            gtinInput = string.Empty;
+            if (factories is not null) newOrderForm.FactoryUuid = factories.First().ExternalUid;
+            if (markingLines is not null) newOrderForm.MarkingLineUuid = markingLines.First().ExternalUid;
+        }
+        else if (selectedType == "Bundle")
+        {
+            newOrderForm.Type = 1; 
+            gtinInput = string.Empty;
+            if (factories is not null) newOrderForm.FactoryUuid = factories.First().ExternalUid;
+            if (markingLines is not null) newOrderForm.MarkingLineUuid = markingLines.First().ExternalUid;
+        }
+        else if (selectedType == "Mastercase")
+        {
+            gtinInput = string.Empty;
+            newOrderForm.Type = 3;
+            newOrderForm.ProductUuid = null;
+            newOrderForm.FactoryUuid = null;
+            newOrderForm.MarkingLineUuid = null;
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -159,10 +214,12 @@
         columns = new()
         {
             new() { Header = "ID", Value = o => o.Id },
-            new() { Header = "Status", Value = o => o.Status },
-            new() { Header = "Gtin", Value = o => o.Product?.Gtin },
-            new() { Header = "Created At", Value = o => o.RecordDate },
+            new() { Header = "Type", Value = o => GetProductTypeString(o.Type) },
+            new() { Header = "Gtin", Value = o => o.Product?.Gtin ?? "N/A"  },
             new() { Header = "Count", Value = o => o.Count },
+            new() { Header = "Created At", Value = o => ToLocalTime(o.RecordDate) },
+            new() { Header = "Status", Value = o => GetStatusTypeString(o.Status) },
+            new() { Header = "Description", Value = o => o.Description },
             new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
         };
     }
@@ -286,8 +343,9 @@
     private void OnGtinInput(ChangeEventArgs e)
     {
         gtinInput = e.Value?.ToString() ?? string.Empty;
+        
         filteredProducts = !string.IsNullOrEmpty(gtinInput)
-            ? products?.Where(p => p.Gtin.Contains(gtinInput, StringComparison.OrdinalIgnoreCase)).Take(5)
+            ? products?.Where(p => p.Gtin.Contains(gtinInput, StringComparison.OrdinalIgnoreCase)).Where(p => selectedType == "Pack" ? p.Type == 0 : p.Type == 1).Take(5)
             : null;
     }
 
@@ -298,6 +356,7 @@
         newOrderForm.ProductUuid = product.ExternalUid;
         newOrderForm.Type = (sbyte)product.Type;
         filteredProducts = null;
+        selectedType = "Pack";
     }
 
     private string GetProductTypeString(int type)
@@ -306,8 +365,29 @@
         {
             0 => "Pack",
             1 => "Bundle",
-            2 => "Mastercase",
+            3 => "Mastercase",
             _ => "Unknown"
         };
+    }
+    private string GetStatusTypeString(int type)
+    {
+        return type switch
+        {
+            -3 => "External Failed",
+            -2 => "External Saved_error",
+            -1 => "Sending error",
+            0 => "Created",
+            1 => "Sent",
+            2 => "Received",
+            3 => "Executing",
+            4 => "Ready",
+            5 => "Done",
+            _ => "Unknown"
+        };
+    }
+
+    private DateTime ToLocalTime(DateTimeOffset dateTimeOffset)
+    {
+        return dateTimeOffset.ToLocalTime().DateTime;
     }
 }

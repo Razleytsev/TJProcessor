@@ -29,7 +29,15 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/")
+    {
+        context.Response.Redirect("/emission");
+        return;
+    }
+    await next();
+});
 
 app.UseHttpsRedirection();
 

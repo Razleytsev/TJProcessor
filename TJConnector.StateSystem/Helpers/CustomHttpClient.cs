@@ -29,10 +29,8 @@ public class CustomHttpClient
                     _logger.LogWarning($"Retry {retryCount} of {context.PolicyKey} due to {exception.Message}. Waiting {delay} before next retry.");
                 });
 
-        // Timeout policy
-        _timeoutPolicy = Policy.TimeoutAsync(TimeSpan.FromSeconds(10), TimeoutStrategy.Optimistic);
+        _timeoutPolicy = Policy.TimeoutAsync(TimeSpan.FromSeconds(15), TimeoutStrategy.Optimistic);
 
-        // Circuit breaker policy
         _circuitBreakerPolicy = Policy
             .Handle<HttpRequestException>()
             .Or<TimeoutRejectedException>()

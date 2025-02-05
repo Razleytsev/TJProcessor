@@ -9,6 +9,8 @@ using TJConnector.SharedLibrary.DTOs.Forms;
 using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
 using TJConnector.StateSystem.Model.ExternalResponses.Container;
+using TJConnector.StateSystem.Model.ExternalResponses.Generic;
+using TJConnector.StateSystem.Model.ExternalResponses.MarkingCode;
 using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Controllers;
@@ -77,7 +79,12 @@ public class OrderController : ControllerBase
             return BadRequest("Order not sent to external system.");
         }
 
-        var externalOrder = await _externalEmission.GetEmissionInfo(localOrder.ExternalGuid.Value);
+        var externalOrder = new CustomResult<EmissionInfoResponse>();
+
+        if (localOrder.Type == 3)
+            externalOrder = await _externalEmission.GetContainerEmissionInfo(localOrder.ExternalGuid.Value);
+        else
+            externalOrder = await _externalEmission.GetEmissionInfo(localOrder.ExternalGuid.Value);
 
         if (!externalOrder.Success || externalOrder.Content == null)
         {
@@ -128,7 +135,12 @@ public class OrderController : ControllerBase
             return BadRequest("Incorrect order status.");
         }
 
-        var response = await _externalEmission.ProcessCodeEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
+        var response = new CustomResult<ProcessResponse>();
+
+        if(localOrder.Type == 3)
+            response = await _externalEmission.ProcessContainerEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
+        else 
+            response = await _externalEmission.ProcessCodeEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
 
         if (!response.Success)
         {
@@ -170,7 +182,12 @@ public class OrderController : ControllerBase
             return BadRequest("Incorrect order status.");
         }
 
-        var response = await _externalEmission.GetCodesFromEmission(new DownloadCodesRequest { type = product.Type, uuid = localOrder.ExternalGuid.Value });
+        var response = new CustomResult<EmissionCodesResponse>();
+
+        if (localOrder.Type == 3)
+            response = await _externalEmission.GetCodesFromContainerEmission(new DownloadCodesRequest { type = 0, uuid = localOrder.ExternalGuid.Value });
+        else
+            response = await _externalEmission.GetCodesFromEmission(new DownloadCodesRequest { type = product.Type, uuid = localOrder.ExternalGuid.Value });
 
         if (!response.Success || response.Content?.codes == null)
         {
@@ -254,10 +271,14 @@ public class OrderController : ControllerBase
             productUuid = order.ProductUuid,
             markingLineUuid = order.MarkingLineUuid,
             factoryUuid = order.FactoryUuid,
-            Type = order.Type
+            Type = (order.Type == 3 ? (sbyte)0 : order.Type)
         };
 
-        var result = await _externalEmission.CreateCodeEmission(emissionRequest);
+        var result = new CustomResult<DocumentCreateResponse>();
+        if (order.Type == 3) 
+            result = await _externalEmission.CreateContainerEmission(emissionRequest);
+        else
+            result = await _externalEmission.CreateCodeEmission(emissionRequest);
 
         if (!result.Success || result.Content?.uuid == null)
         {
@@ -281,19 +302,4 @@ public class OrderController : ControllerBase
 
         return Ok(localOrder);
     }
-
-
-    //[HttpPost]
-    //public async Task<IActionResult> UpdateOrderStatus(Guid uid, int newStatus)
-    //{
-    //    var order = await _context.CodeOrders.FindAsync(uid);
-         
-    //    order.Status = newStatus;
-    //    _context.CodeOrders.Update(order);
-    //    _context.SaveChanges();
-
-    //    await _hubContext.Clients.All.SendAsync("OrderStatusUpdate", uid, newStatus);
-
-    //    return Ok();
-    //}
 }

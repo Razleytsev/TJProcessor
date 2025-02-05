@@ -68,26 +68,26 @@ h1:focus {
 }
 
 .details-container {
-    flex: 1; /* Takes 1/4 of the space */
+    flex: 1; 
     padding: 10px;
-    border-right: 1px solid #ddd; /* Move border to the right */
+    border-right: 1px solid #ddd; 
     position: sticky;
     top: 0;
-    height: 100vh; /* Full viewport height */
+    height: 100vh;
     overflow-y: auto;
     margin: 0;
     box-sizing: border-box;
 }
 
 .table-container {
-    flex: 3; /* Takes 3/4 of the space */
+    flex: 3;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    width: 100%; /* Ensure it takes full width */
+    width: 100%; 
 }
 
 .table-wrapper {
@@ -96,11 +96,11 @@ h1:focus {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    width: 100%; /* Ensure it takes full width */
+    width: 100%;
 }
 
 .table {
-    width: 100%; /* Ensure the table takes full width */
+    width: 100%; 
     border-collapse: collapse;
     margin: 0;
     padding: 0;
