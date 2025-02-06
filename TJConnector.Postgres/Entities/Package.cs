@@ -6,7 +6,7 @@
         public string Code { get; set; } = string.Empty;
         public string SSCCCode { get; set; } = string.Empty;
         public int Status { get; set; }
-        public PackageContent? Content { get; set; }
+        public List<PackageContent>? Content { get; set; }
         public Guid? ContentApplicationGuid { get; set; }
         public Guid? AggregationGuid { get; set; }
         public DateTimeOffset RecordDate { get; set; }

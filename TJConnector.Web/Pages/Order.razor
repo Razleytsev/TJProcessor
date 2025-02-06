@@ -287,7 +287,7 @@
 
             if (result is Microsoft.AspNetCore.Mvc.FileContentResult fileContentResult)
             {
-                var fileName = $"codes_{selectedOrder.ExternalGuid}.txt";
+                var fileName = $"codes_{GetProductTypeString(selectedOrder.Type)}_{selectedOrder.Description}.txt";
                 var fileBytes = fileContentResult.FileContents;
 
                 // Trigger the file download

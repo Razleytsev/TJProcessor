@@ -1,11 +1,6 @@
 ﻿using Dapper;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using TJConnector.Postgres.Entities;
 using TJConnector.StateSystem.Helpers;
 using TJConnector.StateSystem.Model.ExternalDbResult;
 using TJConnector.StateSystem.Model.ExternalResponses.Container;
@@ -23,7 +18,7 @@ namespace TJConnector.StateSystem.Services.Implementation
             _logger = logger;
             _connectionFactory = connectionFactory;
         }
-        public async Task<CustomResult<DbContainerContent>> GetContainerContent(string containerId)
+        public async Task<CustomResult<List<PackageContent>>> GetContainerContent(string containerId)
         {
             using var connection = _connectionFactory.Create();
             {
@@ -31,11 +26,19 @@ namespace TJConnector.StateSystem.Services.Implementation
                 var contentResults = await connection.QueryAsync<ContainerContent>(sqlQuery, new { Code = containerId });
 
                 if (contentResults == null)
-                    return new CustomResult<DbContainerContent> { Success = false, Message = $"No information for mastercases {containerId}" };
+                    return new CustomResult<List<PackageContent>>
+                    { Success = false, Message = $"No information for mastercases {containerId}" };
 
-                var result = new DbContainerContent() { Content = contentResults.ToList() };
+                var result = contentResults
+                    .GroupBy(i => i.Bundle)
+                    .Select(g => new PackageContent
+                    {
+                        Bundle = g.Key,
+                        Packs = g.Select(i => i.Bundle).ToList()
+                    })
+                    .ToList();
 
-                return new CustomResult<DbContainerContent> { Content = result, Success = false, Message = "OK" };
+                return new CustomResult<List<PackageContent>> { Content = result, Success = false, Message = "OK" };
             }
         }
 
@@ -44,7 +47,14 @@ namespace TJConnector.StateSystem.Services.Implementation
             using var connection = _connectionFactory.Create();
             {
                 string sqlQuery = LoadSQLStatement("ContainerInfoQuery.sql");
-                var statusResult = await connection.QueryAsync<ContainerStatus>(sqlQuery, new { Codes = containerId });
+                var parameters = containerId
+                        .Select(x => new DbString
+                        {
+                            Value = x,
+                            IsAnsi = true
+                        });
+                var statusResult = 
+                    await connection.QueryAsync<ContainerStatus>(sqlQuery, new { Codes = parameters });
                 if (statusResult == null)
                     return new CustomResult<DbContainerStatus> { Success = false, Message = $"Can't provide content for mastercase {containerId}" };
 

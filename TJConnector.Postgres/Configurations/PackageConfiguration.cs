@@ -19,7 +19,7 @@ internal sealed class PackageConfiguration : IEntityTypeConfiguration<Package>
         builder.Property(p => p.Content)
             .HasConversion(
                       v => JsonConvert.SerializeObject(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }),
-                      v => JsonConvert.DeserializeObject<PackageContent>(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore })
+                      v => JsonConvert.DeserializeObject<List<PackageContent>>(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore })
             )
             .HasColumnType("jsonb");
         builder.Property(p => p.StatusHistory)

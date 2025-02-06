@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using System.Text;
-using TJConnector.Api.Hubs;
-using TJConnector.Postgres;
 using TJConnector.Postgres.Entities;
+using TJConnector.Postgres;
 using TJConnector.SharedLibrary.DTOs.Forms;
 using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
@@ -16,49 +14,49 @@ using TJConnector.StateSystem.Services.Contracts;
 namespace TJConnector.Api.Controllers;
 
 [ApiController]
-[Route("api/order")]
-public class OrderController : ControllerBase
+[Route("api/packagerequest")]
+public class PackageRequestController : ControllerBase
 {
     private readonly ApplicationDbContext _context;
+    private readonly IExternalContainer _externalContainer;
     private readonly IExternalEmission _externalEmission;
-    private readonly ILogger<OrderController> _logger;
+    private readonly ILogger<PackageRequestController> _logger;
 
-    //private readonly IHubContext<OrderHub> _hubContext;
 
-    public OrderController(
+    public PackageRequestController(
         ApplicationDbContext context,
+        IExternalContainer externalContainer,
         IExternalEmission externalEmission,
-        ILogger<OrderController> logger)
+        ILogger<PackageRequestController> logger)
     {
         _context = context;
         _externalEmission = externalEmission;
+        _externalContainer = externalContainer;
         _logger = logger;
     }
 
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<CodeOrder>>> GetOrders()
+    public async Task<ActionResult<IEnumerable<PackageRequest>>> GetOrders()
     {
-        return await _context.CodeOrders.Include(order => order.Product).ToListAsync();
+        return await _context.PackageRequests.ToListAsync();
     }
 
-    [HttpGet("{id}")]                                                                                                                                   
-    public async Task<ActionResult<CodeOrder>> GetOrderById(int id)
+    [HttpGet("{id}")]
+    public async Task<ActionResult<PackageRequest>> GetOrderById(int id)
     {
-        var order = await _context.CodeOrders.FindAsync(id);
+        var request = await _context.PackageRequests.FindAsync(id);
 
-        if (order == null)
+        if (request == null)
         {
-            _logger.LogWarning($"Order with ID {id} not found.");
+            _logger.LogWarning($"Package request with ID {id} not found.");
             return NotFound();
         }
 
-        var orderContent = await _context.CodeOrdersContents.FirstOrDefaultAsync(x => x.CodeOrderId == id);
-        var orderProduct = await _context.Products.FirstOrDefaultAsync(x => x.Id == order.ProductId);
+        var requestPackages = await _context.Packages.Where(x => x.PackageRequestId == id).ToListAsync();
 
-        order.Content = orderContent;
-        order.Product = orderProduct;
+        request.Packages = requestPackages;
 
-        return order;
+        return request;
     }
 
     [HttpGet("external/{id}")]
@@ -137,9 +135,9 @@ public class OrderController : ControllerBase
 
         var response = new CustomResult<ProcessResponse>();
 
-        if(localOrder.Type == 3)
+        if (localOrder.Type == 3)
             response = await _externalEmission.ProcessContainerEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
-        else 
+        else
             response = await _externalEmission.ProcessCodeEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
 
         if (!response.Success)
@@ -161,7 +159,7 @@ public class OrderController : ControllerBase
     public async Task<ActionResult<CodeOrder>> GetCodesFromOrder(int id)
     {
         var localOrder = await _context.CodeOrders.FindAsync(id);
-          // ?? throw new ArgumentNullException($"Order ({id}) not found.");
+        // ?? throw new ArgumentNullException($"Order ({id}) not found.");
 
         if (localOrder == null)
         {
@@ -275,7 +273,7 @@ public class OrderController : ControllerBase
         };
 
         var result = new CustomResult<DocumentCreateResponse>();
-        if (order.Type == 3) 
+        if (order.Type == 3)
             result = await _externalEmission.CreateContainerEmission(emissionRequest);
         else
             result = await _externalEmission.CreateCodeEmission(emissionRequest);

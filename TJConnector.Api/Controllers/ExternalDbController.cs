@@ -28,7 +28,7 @@ public class ExternalDbController : ControllerBase
     }
 
     [HttpGet("mccontent/{container}")]
-    public async Task<ActionResult<DbContainerContent>> GetMcContent(string container)
+    public async Task<ActionResult<List<PackageContent>>> GetMcContent(string container)
     {
         var containerContent = await _externalDBData.GetContainerContent(container);
         return Ok(containerContent);
