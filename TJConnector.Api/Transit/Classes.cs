@@ -1,23 +1,40 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using System.ComponentModel;
+using TJConnector.Postgres.Entities;
 
 namespace TJConnector.Api.Hubs;
 
-public class OrderCreated
+public class ProcessContainerStatus
 {
-    public int OrderId { get; set; }
-    public List<int> ContainerIds { get; set; } = new List<int>();
+    public List<Package> Containers { get; set; }
 }
 
-public class ContainerStatusUpdated
+public class ProcessExternalDbStatus
 {
-    public int ContainerId { get; set; }
-    public int Status { get; set; }
-    public string Comment { get; set; } = string.Empty;
+    public Package Container { get; set; }
 }
 
-public class ContainerProcessed
+public class ProcessExternalDbContent
 {
-    public int ContainerId { get; set; }
-    public bool Success { get; set; }
-    public string Message { get; set; } = string.Empty;
+    public Package Container { get; set; }
+}
+
+public class ProcessEmissionService
+{
+    public Package Container { get; set; }
+}
+
+public class ProcessApplicationStatus
+{
+    public Package Container { get; set; }
+}
+
+public class ProcessApplicationRequest
+{
+    public Package Container { get; set; }
+}
+
+public class ProcessContainerAggregation
+{
+    public Package Container { get; set; }
 }

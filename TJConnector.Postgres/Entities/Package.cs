@@ -11,7 +11,7 @@
         public Guid? AggregationGuid { get; set; }
         public DateTimeOffset RecordDate { get; set; }
         public StatusHistory? StatusHistory { get; set; }
-
+        public string Comment { get; set; } = string.Empty;
         public int PackageRequestId { get; set; }
     }
     public class PackageContent

@@ -80,7 +80,7 @@ public class PackageRequestController : ControllerBase
 
         var localPackages = new List<Package>();
 
-        foreach(PackageCouple link in request.packages)
+        foreach (PackageCouple link in request.packages)
         {
             localPackages.Add(new Package
             {
@@ -103,7 +103,7 @@ public class PackageRequestController : ControllerBase
             return BadRequest(ex.Message);
         }
 
-        await _bus.Publish(new OrderCreated { OrderId = localRequest.Id, ContainerIds = localPackages.Select(p => p.Id).ToList() });
+        //await _bus.Publish(new OrderCreated { OrderId = localRequest.Id, ContainerIds = localPackages.Select(p => p.Id).ToList() });
 
         return Ok(localRequest);
     }
@@ -126,173 +126,20 @@ public class PackageRequestController : ControllerBase
         return request;
     }
 
-    [HttpGet("external/{id}")]
-    public async Task<ActionResult<CodeOrder>> GetExternalOrderById(int id)
+    [HttpGet("test/{id}")]
+    public async Task<ActionResult<ContainerInfoResponse>> GetExternalOrderById(string id)
     {
-        var localOrder = await _context.CodeOrders.FindAsync(id);
-
-        if (localOrder == null)
-        {
-            _logger.LogWarning($"Order with ID {id} not found.");
-            return NotFound();
-        }
-        int currentStatus = localOrder.Status;
-
-        if (localOrder.ExternalGuid == null)
-        {
-            _logger.LogWarning($"Order with ID {id} has no external GUID.");
-            return BadRequest("Order not sent to external system.");
-        }
-
-        var externalOrder = new CustomResult<EmissionInfoResponse>();
-
-        if (localOrder.Type == 3)
-            externalOrder = await _externalEmission.GetContainerEmissionInfo(localOrder.ExternalGuid.Value);
-        else
-            externalOrder = await _externalEmission.GetEmissionInfo(localOrder.ExternalGuid.Value);
-
-        if (!externalOrder.Success || externalOrder.Content == null)
-        {
-            _logger.LogError($"Failed to fetch external order info for GUID {localOrder.ExternalGuid}.");
-            return BadRequest(externalOrder.Message ?? "Failed to fetch external order info.");
-        }
-
-        localOrder.Status = externalOrder.Content.status switch
-        {
-            0 => -2, // saved_error
-            1 => 2,  // saved
-            3 => 3,  // executing
-            4 => 4,  // available
-            5 => -3, // failed
-            6 => 5,  // done
-            _ => -4  // unknown
-        };
-
-        if (currentStatus != localOrder.Status)
-            localOrder.StatusHistoryJson = [.. localOrder.StatusHistoryJson, new StatusHistory { Status = localOrder.Status, StatusDate = DateTimeOffset.UtcNow }];
-
-        _context.Entry(localOrder).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-
-        return Ok(localOrder);
+        var result = await _externalContainer.ContainerInfo(id);
+        return Ok(result);
     }
 
-    [HttpPost("external/{id}/process")]
-    public async Task<ActionResult<CodeOrder>> ProcessCodeEmission(int id)
+    [HttpPost("test/post")]
+    public async Task<ActionResult<CodeOrder>> ProcessCodeEmission(List<string> ids)
     {
-        var localOrder = await _context.CodeOrders.FindAsync(id);
-
-        if (localOrder == null)
+        var containerStatusList = await _externalContainer.ContainerInfoList(new ListRequestRequest
         {
-            _logger.LogWarning($"Order with ID {id} not found.");
-            return BadRequest("Order not found.");
-        }
-
-        if ((localOrder.Status != 2) && (localOrder.Status != 1))
-        {
-            _logger.LogWarning($"Order with ID {id} has incorrect status for processing.");
-            return BadRequest("Incorrect order status.");
-        }
-
-        if (localOrder.ExternalGuid == null)
-        {
-            _logger.LogWarning($"Order with ID {id} has no external GUID.");
-            return BadRequest("Incorrect order status.");
-        }
-
-        var response = new CustomResult<ProcessResponse>();
-
-        if (localOrder.Type == 3)
-            response = await _externalEmission.ProcessContainerEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
-        else
-            response = await _externalEmission.ProcessCodeEmission(new ProcessDocument { uuids = [localOrder.ExternalGuid.Value] });
-
-        if (!response.Success)
-        {
-            _logger.LogError($"Failed to process emission for order {id}. Message: {response.Message}");
-            return BadRequest(response.Message);
-        }
-
-        localOrder.Status = 3;
-        localOrder.StatusHistoryJson = [.. localOrder.StatusHistoryJson, new StatusHistory { Status = 3, StatusDate = DateTimeOffset.UtcNow }];
-
-        _context.Entry(localOrder).State = EntityState.Modified;
-        await _context.SaveChangesAsync();
-
-        return Ok(localOrder);
-    }
-
-    [HttpPost("external/{id}/download")]
-    public async Task<ActionResult<CodeOrder>> GetCodesFromOrder(int id)
-    {
-        var localOrder = await _context.CodeOrders.FindAsync(id);
-        // ?? throw new ArgumentNullException($"Order ({id}) not found.");
-
-        if (localOrder == null)
-        {
-            _logger.LogWarning($"Order with ID {id} not found.");
-            return BadRequest("Order not found.");
-        }
-        var product = await _context.Products.FindAsync(localOrder.ProductId);
-
-        if ((localOrder.Status != 4) && (localOrder.Status != 5))
-        {
-            _logger.LogWarning($"Order with ID {id} has incorrect status for downloading.");
-            return BadRequest("Incorrect order status.");
-        }
-
-        if (localOrder.ExternalGuid == null)
-        {
-            _logger.LogWarning($"Order with ID {id} has no external GUID.");
-            return BadRequest("Incorrect order status.");
-        }
-
-        var response = new CustomResult<EmissionCodesResponse>();
-
-        if (localOrder.Type == 3)
-            response = await _externalEmission.GetCodesFromContainerEmission(new DownloadCodesRequest { type = 0, uuid = localOrder.ExternalGuid.Value });
-        else
-            response = await _externalEmission.GetCodesFromEmission(new DownloadCodesRequest { type = product.Type, uuid = localOrder.ExternalGuid.Value });
-
-        if (!response.Success || response.Content?.codes == null)
-        {
-            _logger.LogError($"Failed to download codes for order {id}. Message: {response.Message}");
-            return BadRequest(response.Message ?? "Failed to download codes.");
-        }
-
-        _context.CodeOrdersContents.Add(new CodeOrderContent
-        {
-            Id = localOrder.Id,
-            CodeOrderId = localOrder.Id,
-            OrderContent = response.Content.codes,
-            RecordDate = DateTimeOffset.UtcNow
+            filter = new Filter { code = ids }
         });
-
-        await _context.SaveChangesAsync();
-
-        return Ok(localOrder);
-    }
-
-    [HttpPost("{id}/download")]
-    public async Task<IActionResult> DownloadOrderContent(int id, [FromQuery] string user)
-    {
-        var orderContent = await _context.CodeOrdersContents.FirstOrDefaultAsync(x => x.CodeOrderId == id);
-
-        if (orderContent?.OrderContent == null)
-        {
-            _logger.LogWarning($"Order content for ID {id} not found.");
-            return NotFound();
-        }
-
-        orderContent.DownloadHistory = new DownloadHistory
-        {
-            DownloadTime = DateTimeOffset.UtcNow,
-            User = user
-        };
-
-        await _context.SaveChangesAsync();
-
-        var content = string.Join(Environment.NewLine, orderContent.OrderContent);
-        return File(Encoding.UTF8.GetBytes(content), "text/plain", $"codes_{id}.txt");
+        return Ok(containerStatusList);
     }
 }
