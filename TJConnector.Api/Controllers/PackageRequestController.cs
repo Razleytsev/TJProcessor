@@ -75,9 +75,6 @@ public class PackageRequestController : ControllerBase
             return BadRequest(ex.Message);
         }
 
-        await Task.Delay(500);
-
-
         var localPackages = new List<Package>();
 
         foreach(PackageCouple link in request.packages)
@@ -125,6 +122,8 @@ public class PackageRequestController : ControllerBase
 
         return request;
     }
+
+
 
     [HttpGet("external/{id}")]
     public async Task<ActionResult<CodeOrder>> GetExternalOrderById(int id)

@@ -15,6 +15,7 @@ namespace TJConnector.StateSystem.Model.ExternalRequests.Generic
     public class Filter
     {
         public Guid[]? factoryUuid { get; set; }
+        public string[]? code { get; set; }
     }
 
     public class Order
