@@ -10,8 +10,7 @@ namespace TJConnector.Web.Services.Contracts
         Task<IEnumerable<PackageRequest>> GetPackageRequestsAsync();
 
         Task<PackageRequest> GetPackageRequestByIdAsync(int id);
-        Task<PackageRequest> CreatePackageRequestAsync(OrderCreateForm form);
+        Task<PackageRequest> CreatePackageRequestAsync(PackageRequestForm form);
         Task<ProcessResponse> ProcessPackageRequestAsync(int uuid);
-        Task<CodeOrder> GetExternalOrderByIdAsync(int id);
     }
 }

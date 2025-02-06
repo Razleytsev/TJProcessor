@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -42,6 +43,15 @@ builder.Services.AddScoped<IExternalEmission, ExternalEmissionService>();
 builder.Services.AddScoped<IExternalProduct, ExternalProductService>();
 builder.Services.AddSingleton<ISQLConnectionFactory, SQLConnectionFactory>();
 builder.Services.AddScoped<IExternalDBData, ExternalDbData>();
+
+builder.Services.AddMassTransit(cfg =>
+{
+    cfg.SetInMemorySagaRepositoryProvider();
+    cfg.UsingInMemory((context, config) =>
+    {
+        config.ConfigureEndpoints(context);
+    });
+});
 
 //builder.Services.AddSignalR();
 //builder.Services.AddResponseCompression(opts =>

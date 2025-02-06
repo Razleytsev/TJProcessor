@@ -24,9 +24,9 @@ public class ContainerInfoResponse
     public string? productionDate { get; set; }
     public string? providedAt { get; set; }
     public int? reason { get; set; }
-    public string serialNumber { get; set; } = string.Empty;
-    public int status { get; set; }
-    public int type { get; set; }
+    public string? serialNumber { get; set; } = string.Empty;
+    public int? status { get; set; }
+    public int? type { get; set; }
     public string? verificationCode { get; set; }
     public DateTime? version { get; set; }
 }

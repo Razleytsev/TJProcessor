@@ -12,9 +12,9 @@ namespace TJConnector.SharedLibrary.DTOs.Forms
         public string Description { get; set; } = string.Empty;
         public string User { get; set; } = string.Empty;
         public string? Filename { get; set; }
-        public List<Link> packages { get; set; } = new List<Link>();
+        public List<PackageCouple> packages { get; set; } = new List<PackageCouple>();
     }
-    public class Link
+    public class PackageCouple
     {
         public string Code { get; set; } = "";
         public string SSCCCode { get; set; } = "";

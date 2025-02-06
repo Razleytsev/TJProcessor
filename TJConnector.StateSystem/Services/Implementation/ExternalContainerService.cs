@@ -22,6 +22,11 @@ namespace TJConnector.StateSystem.Services.Implementation
             };
         }
 
+        public Task<CustomResult<List<ContainerInfoResponse>>> ContainerInfoList(ListRequestRequest body)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<CustomResult<ContainerOperationInfoResponse>> ContainerOperation(ContainerOperationCreateRequest body)
         {
             throw new NotImplementedException();

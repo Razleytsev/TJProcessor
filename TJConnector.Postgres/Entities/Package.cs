@@ -13,7 +13,6 @@
         public StatusHistory? StatusHistory { get; set; }
 
         public int PackageRequestId { get; set; }
-        public PackageRequest? PackageRequest { get; set; }
     }
     public class PackageContent
     {
