@@ -23,5 +23,6 @@ namespace TJConnector.StateSystem.Services.Contracts
 
         Task<CustomResult<DocumentCreateResponse>> CreateCodeApplication(ApplicationCreateRequest body);
         Task<CustomResult<ProcessResponse>> ProcessCodeApplication(ProcessDocument body);
+        Task<CustomResult<EmissionInfoResponse>> GetCodeApplicationInfo(Guid uuid);
     }
 }

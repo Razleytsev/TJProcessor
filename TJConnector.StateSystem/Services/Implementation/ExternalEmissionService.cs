@@ -357,5 +357,33 @@ namespace TJConnector.StateSystem.Services.Implementation
                 return new CustomResult<ProcessResponse> { Success = false, Message = ex.Message };
             }
         }
+        public async Task<CustomResult<EmissionInfoResponse>> GetCodeApplicationInfo(Guid uuid)
+        {
+            if (uuid == Guid.Empty)
+            {
+                _logger.LogError("UUID cannot be empty.");
+                return new CustomResult<EmissionInfoResponse> { Success = false, Message = "UUID is required." };
+            }
+
+            try
+            {
+                var response = await _httpClient.GetAsync($"markingCode/report/apply/{uuid}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to fetch emission info for UUID {uuid}. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<EmissionInfoResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<EmissionInfoResponse>();
+                return new CustomResult<EmissionInfoResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"An error occurred while fetching emission info for UUID {uuid}.");
+                return new CustomResult<EmissionInfoResponse> { Success = false, Message = ex.Message };
+            }
+        }
     }
 }

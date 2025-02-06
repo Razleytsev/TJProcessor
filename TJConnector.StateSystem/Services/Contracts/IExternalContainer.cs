@@ -8,11 +8,15 @@ namespace TJConnector.StateSystem.Services.Contracts
     public interface IExternalContainer
     {
         Task<CustomResult<ContainerRegisterResponse>> ContainerRegister(ContainerRegisterRequest codes);
+
         Task<CustomResult<ContainerOperationInfoResponse>> ContainerOperation(ContainerOperationCreateRequest body);
+
         Task<CustomResult<ProcessResponse>> ContainerOperationProcess(ProcessDocument body);
         Task<CustomResult<ContainerInfoResponse>> ContainerInfo(string code);
         Task<CustomResult<List<ContainerInfoResponse>>> ContainerInfoList(ListRequestRequest body);
-        Task<CustomResult<ContainerRegisterResponse>> ContainerOperationCheck(string uuid);
+        Task<CustomResult<ContainerOperationInfoResponse>> ContainerOperationCheck(Guid uuid);
         Task<CustomResult<ContainerOperationListResponse>> ContainerOperationList(ListRequestRequest body);
+
+
     }
 }

@@ -5,8 +5,10 @@ using Serilog;
 using System.Net.Http.Headers;
 using System.Text;
 using TJConnector.Api.Hubs;
+using TJConnector.Api.Transit;
 using TJConnector.Postgres;
 using TJConnector.StateSystem.Helpers;
+using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Services.Contracts;
 using TJConnector.StateSystem.Services.Implementation;
 
@@ -51,6 +53,8 @@ builder.Services.AddMassTransit(cfg =>
     {
         config.ConfigureEndpoints(context);
     });
+
+    cfg.AddConsumer<OrderCreatedConsumer>();
 });
 
 //builder.Services.AddSignalR();
