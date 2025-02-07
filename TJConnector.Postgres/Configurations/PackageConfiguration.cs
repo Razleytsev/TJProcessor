@@ -25,7 +25,7 @@ internal sealed class PackageConfiguration : IEntityTypeConfiguration<Package>
         builder.Property(p => p.StatusHistory)
             .HasConversion(
                       v => JsonConvert.SerializeObject(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }),
-                      v => JsonConvert.DeserializeObject<StatusHistory>(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore })
+                      v => JsonConvert.DeserializeObject<StatusHistory[]>(v, new JsonSerializerSettings { NullValueHandling = NullValueHandling.Ignore }) ?? new StatusHistory[0]
             )
             .HasColumnType("jsonb");
 

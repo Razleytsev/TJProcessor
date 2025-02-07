@@ -1,65 +1,76 @@
-﻿//using MassTransit;
-//using System.Linq;
-//using TJConnector.Api.Hubs;
-//using TJConnector.Postgres;
-//using TJConnector.StateSystem.Model.ExternalRequests.Generic;
-//using TJConnector.StateSystem.Services.Contracts;
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
+using System.Linq;
+using TJConnector.Api.Hubs;
+using TJConnector.Postgres;
+using TJConnector.StateSystem.Model.ExternalRequests.Generic;
+using TJConnector.StateSystem.Services.Contracts;
 
-//namespace TJConnector.Api.Transit;
-//public class ContainerStatusConsumer : IConsumer<ProcessContainerStatus>
-//{
-//    private readonly IExternalContainer _containerService;
-//    private readonly ApplicationDbContext _context;
+namespace TJConnector.Api.Transit;
+public class ContainerStatusConsumer : IConsumer<ProcessContainerStatus1>
+{
+    private readonly IExternalContainer _containerService;
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<ContainerStatusConsumer> _logger;
 
-//    public ContainerStatusConsumer(IExternalContainer containerService, ApplicationDbContext externalDb)
-//    {
-//        _containerService = containerService;
-//        _context = externalDb;
-//    }
+    public ContainerStatusConsumer(IExternalContainer containerService, ApplicationDbContext context, ILogger<ContainerStatusConsumer> logger)
+    {
+        _containerService = containerService;
+        _context = context;
+        _logger = logger;   
+    }
 
-//    public async Task Consume(ConsumeContext<ProcessContainerStatus> context)
-//    {
-//        var containers = context.Message.Containers;
+    public async Task Consume(ConsumeContext<ProcessContainerStatus1> message)
+    {
+        var containers = message.Message.Containers;
 
-//        containers.ForEach(x => x.Status = -1);
+        containers.ForEach(x => x.Status = -1);
 
-//        var batches = containers.Chunk(50);
+        foreach (var container in containers)
+            container.AddStatus(-1);
 
-//        foreach (var batch in batches)
-//        {
-//            var containerStatusList = await _containerService.ContainerInfoList(new ListRequestRequest
-//            {
-//                filter = new Filter { code = batch.Select(x => x.Code).ToList() }
-//            });
+        var batches = containers.Chunk(50);
 
-//            if (containerStatusList.Content == null)
-//                continue;
+        foreach (var batch in batches)
+        {
+            var containerStatusList = await _containerService.ContainerInfoList(new ListRequestRequest
+            {
+                filters = new Filter { code = batch.Select(x => x.SSCCCode).ToArray() }
+            });
 
-//            foreach (var package in batch)
-//            {
-//                var containerInfo = containerStatusList.Content.FirstOrDefault(c => c.code == package.Code);
+            if (containerStatusList.Content?.items == null)
+                continue;
 
-//                if (containerInfo == null)
-//                {
-//                    package.Status = -1;
-//                    package.Comment = "Не найден во внешней системе";
-//                    await _context.SaveChangesAsync();
-//                    continue;
-//                }
+            foreach (var package in batch)
+            {
+                var containerInfo = containerStatusList.Content.items.FirstOrDefault(c => c.code == package.SSCCCode);
 
-//                if (containerInfo.Status != 0)
-//                {
-//                    package.Status = -1;
-//                    package.Comment = "Некорректный статус во внешней системе";
-//                    //await _context.UpdateContainer(package);
-//                    continue;
-//                }
+                if (containerInfo == null)
+                {
+                    package.Comment = "Not found in TJ state system";
+                    package.AddStatus(-1);
+                    _context.Entry(package).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                    continue;
+                }
 
-//                package.Status = 1;
-//                //await _context.UpdateContainer(package);
+                if (containerInfo.status != 0)
+                {
+                    package.Comment = "Incorrect status in TJ state system";
+                    package.AddStatus(-1);
+                    _context.Entry(package).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                    continue;
+                }
 
-//                await context.Publish(new ProcessExternalDbStatus { package = package });
-//            }
-//        }
-//    }
-//}
+                package.Status = 1;
+                _context.Entry(package).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+
+                await Task.Delay(500);
+
+                await message.Publish(new ProcessExternalDbStatus2 { Container = package });
+            }
+        }
+    }
+}

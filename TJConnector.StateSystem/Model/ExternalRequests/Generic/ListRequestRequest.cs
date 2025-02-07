@@ -5,7 +5,7 @@ namespace TJConnector.StateSystem.Model.ExternalRequests.Generic
     public class ListRequestRequest
     {
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-        public Filter? filter { get; set; }
+        public Filter? filters { get; set; }
         public int limit { get; set; } = 100;
         public int offset { get; set; } = 0;
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -14,8 +14,10 @@ namespace TJConnector.StateSystem.Model.ExternalRequests.Generic
 
     public class Filter
     {
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public Guid[]? factoryUuid { get; set; }
-        public List<string>? code { get; set; }
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public string[]? code { get; set; }
     }
 
     public class Order

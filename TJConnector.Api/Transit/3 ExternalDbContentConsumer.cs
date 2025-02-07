@@ -1,41 +1,49 @@
-﻿//using MassTransit;
-//using TJConnector.Api.Hubs;
-//using TJConnector.Postgres;
-//using TJConnector.StateSystem.Services.Contracts;
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
+using TJConnector.Api.Hubs;
+using TJConnector.Postgres;
+using TJConnector.Postgres.Entities;
+using TJConnector.StateSystem.Services.Contracts;
+using TJConnector.StateSystem.Services.Implementation;
 
-//namespace TJConnector.Api.Transit;
+namespace TJConnector.Api.Transit;
 
-//public class ExternalDbContentConsumer : IConsumer<ProcessExternalDbContent>
-//{
-//    private readonly ApplicationDbContext _externalDb;
-//    private readonly IExternalEmission _emissionService;
+public class ExternalDbContentConsumer : IConsumer<ProcessExternalDbContent3>
+{
+    private readonly ApplicationDbContext _context;
+    private readonly IExternalDBData _externalDBData;
+    private readonly ILogger<ExternalDbContentConsumer> _logger;
 
-//    public ExternalDbContentConsumer(ApplicationDbContext externalDb, IExternalEmission emissionService)
-//    {
-//        _externalDb = externalDb;
-//        _emissionService = emissionService;
-//    }
+    public ExternalDbContentConsumer(ApplicationDbContext context, IExternalDBData externalDBData , ILogger<ExternalDbContentConsumer> logger)
+    {
+        _externalDBData = externalDBData;
+        _context = context;
+        _logger = logger;   
+    }
 
-//    public async Task Consume(ConsumeContext<ProcessExternalDbContent> context)
-//    {
-//        var package = context.Message.Container;
+    public async Task Consume(ConsumeContext<ProcessExternalDbContent3> container)
+    {
+        var package = container.Message.Container;
 
-//        var dbContent = await _externalDb.GetDbContent(package.Code);
+        package.Status = -3;
 
-//        if (dbContent == null)
-//        {
-//            package.Status = -3;
-//            package.Comment = "Не найдена вложенность во внешней базе данных";
-//            //await _externalDb.UpdateContainer(package);
-//            return;
-//        }
+        var dbContent = await _externalDBData.GetContainerContent(package.Code);
 
-//        package.Status = 3;
-//        package.Content = dbContent;
-//        //await _externalDb.UpdateContainer(package);
+        if (dbContent == null)
+        {
+            package.Comment = "Content of the package not found in external database";
+            package.AddStatus(-3);
+            _context.Entry(package).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return;
+        }
 
-//        await Task.Delay(500);
+        package.Status = 3;
+        package.Content = dbContent.Content;
 
-//        await context.Publish(new ProcessEmissionService { Container = package });
-//    }
-//}
+        _context.Entry(package).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
+
+        await container.Publish(new ProcessEmissionService4 { Container = package });
+    }
+}

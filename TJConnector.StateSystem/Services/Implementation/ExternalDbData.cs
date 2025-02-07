@@ -34,7 +34,7 @@ namespace TJConnector.StateSystem.Services.Implementation
                     .Select(g => new PackageContent
                     {
                         Bundle = g.Key,
-                        Packs = g.Select(i => i.Pack).ToList()
+                        Packs = g.Select(i => i.Pack).ToArray()
                     })
                     .ToList();
 

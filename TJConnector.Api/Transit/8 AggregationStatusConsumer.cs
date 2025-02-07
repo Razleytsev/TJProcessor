@@ -1,39 +1,35 @@
 ﻿using MassTransit;
 using Microsoft.EntityFrameworkCore;
-using Polly;
-using System.ComponentModel;
 using TJConnector.Api.Hubs;
 using TJConnector.Postgres;
-using TJConnector.Postgres.Entities;
 using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Transit;
+public class AggregationStatusConsumer : IConsumer<ProcessAggregationDocumentStatus8>
 
-public class ApplicationStatusConsumer : IConsumer<ProcessAggregationStatus5>
 {
-    private readonly IExternalEmission _emissionService;
+    private readonly IExternalContainer _containerService;
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<ApplicationStatusConsumer> _logger;
-
-    public ApplicationStatusConsumer(IExternalEmission emissionService, ApplicationDbContext externalDb, ILogger<ApplicationStatusConsumer> logger)
+    private readonly ILogger<AggregationStatusConsumer> _logger;   
+    public AggregationStatusConsumer(IExternalContainer containerService, ApplicationDbContext externalDb, ILogger<AggregationStatusConsumer> logger)
     {
-        _emissionService = emissionService;
+        _containerService = containerService;
         _context = externalDb;
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<ProcessAggregationStatus5> container)
+    public async Task Consume(ConsumeContext<ProcessAggregationDocumentStatus8> container)
     {
         var package = container.Message.Container;
-        var statusList = await _emissionService.GetCodeApplicationInfo(package.ContentApplicationGuid ?? Guid.Empty);
+        var statusList = await _containerService.ContainerOperationCheck(package.AggregationGuid.Value);
 
-        _logger.LogWarning($"APPLICATIONSTATUSCONSUMER{package.SSCCCode}");
+        _logger.LogWarning($"AggregationStatusConsumer{package.SSCCCode}");
         var status = statusList.Content;
 
         if (status == null)
         {
-            package.Status = -5;
-            package.Comment = "Unknown error with ApplicationInfo";
+            package.Status = -9;
+            package.Comment = "Unknown error with AggregationInfo";
             _context.Entry(package).State = EntityState.Modified;
             await _context.SaveChangesAsync();
             return;
@@ -42,18 +38,18 @@ public class ApplicationStatusConsumer : IConsumer<ProcessAggregationStatus5>
         switch (status?.status)
         {
             case 0:
-                package.Status = -5;
+                package.Status = -9;
                 package.Comment = "Saved with error in TJ state system";
-                package.AddStatus(-5);
+                package.AddStatus(-9);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 return;
             case 1:
-                package.Status = 6;
-                package.AddStatus(6);
+                package.Status = 10;
+                package.AddStatus(10);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await container.Publish(new ProcessApplicationRequest6 { Container = package });
+                await container.Publish(new ProcessAggregationDocument9 { Container = package });
                 return;
             case 2:
                 package.Status = -5;
@@ -63,31 +59,30 @@ public class ApplicationStatusConsumer : IConsumer<ProcessAggregationStatus5>
                 await _context.SaveChangesAsync();
                 return;
             case 3:
-                package.Status = 5;
+                package.Status = 11;
                 package.Comment = "Processing in TJ state system";
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await Task.Delay(5000);
-                await container.Publish(new ProcessAggregationStatus5 { Container = package });
+                await Task.Delay(10000);
+                await container.Publish(new ProcessAggregationDocumentStatus8 { Container = package });
                 return;
             case 4:
-                package.Status = -6;
-                package.AddStatus(-6);
+                package.Status = -11;
+                package.AddStatus(-11);
                 package.Comment = "Failed in TJ state system";
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 return;
             case 5:
-                package.Status = 8;
-                package.AddStatus(8);
+                package.Status = 12;
+                package.AddStatus(12);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await container.Publish(new ProcessContainerAggregation7 { Container = package });
                 return;
         }
 
-        package.Status = -5;
-        package.AddStatus(-5);
+        package.Status = -12;
+        package.AddStatus(-12);
         package.Comment = "Unknown status in TJ state system";
         _context.Entry(package).State = EntityState.Modified;
         await _context.SaveChangesAsync();

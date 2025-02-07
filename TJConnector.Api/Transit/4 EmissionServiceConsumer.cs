@@ -1,39 +1,91 @@
-﻿//using MassTransit;
-//using TJConnector.Api.Hubs;
-//using TJConnector.Postgres;
-//using TJConnector.StateSystem.Services.Contracts;
+﻿using MassTransit;
+using Microsoft.EntityFrameworkCore;
+using TJConnector.Api.Hubs;
+using TJConnector.Postgres;
+using TJConnector.Postgres.Entities;
+using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
+using TJConnector.StateSystem.Services.Contracts;
 
-//namespace TJConnector.Api.Transit;
+namespace TJConnector.Api.Transit;
 
-//public class EmissionServiceConsumer : IConsumer<ProcessEmissionService>
-//{
-//    private readonly IExternalEmission _emissionService;
-//    private readonly ApplicationDbContext _externalDb;
+public class EmissionServiceConsumer : IConsumer<ProcessEmissionService4>
+{
+    private readonly IExternalEmission _emissionService;
+    private readonly ApplicationDbContext _context;
+    private readonly ILogger<EmissionServiceConsumer> _logger;
 
-//    public EmissionServiceConsumer(IExternalEmission emissionService, ApplicationDbContext externalDb)
-//    {
-//        _emissionService = emissionService;
-//        _externalDb = externalDb;
-//    }
+    public EmissionServiceConsumer(IExternalEmission emissionService, ApplicationDbContext context, ILogger<EmissionServiceConsumer> logger)
+    {
+        _emissionService = emissionService;
+        _context = context;
+        _logger = logger;
+    }
 
-//    public async Task Consume(ConsumeContext<ProcessEmissionService> context)
-//    {
-//        var package = context.Message.Container;
+    public async Task Consume(ConsumeContext<ProcessEmissionService4> container)
+    {
+        var package = container.Message.Container;
 
-//        var response = await _emissionService.CreateCodeApplication(package.Code);
+        _logger.LogWarning($"EMISSIONSERVICECONSUMER{package.SSCCCode}");
+        package.Status = -4;
 
-//        if (!response.Success)
-//        {
-//            package.Status = -4;
-//            package.Comment = response.Message;
-//            //await _externalDb.UpdateContainer(package);
-//            return;
-//        }
+        var factory = await _context.Factories.FindAsync(1);
+        //var location = await _context.Locations.FindAsync(1);
+        var markingLine = await _context.MarkingLines.FindAsync(1);
 
-//        package.Status = 4;
-//        package.ContentApplicationGuid = response.Uuid;
-//        //await _externalDb.UpdateContainer(package);
+        if(factory == null || 
+            //location == null || 
+            markingLine == null)
+        {
+            package.Comment = "Check metadata (factory, location, marking line)";
+            package.AddStatus(-4);
+            _context.Entry(package).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return;
+        }
 
-//        await context.Publish(new ProcessApplicationStatus { Container = package });
-//    }
-//}
+        if (package.Content == null)
+        {
+            package.Comment = "No content in database for this package";
+            package.AddStatus(-4);
+            _context.Entry(package).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return;
+        }
+
+        var applicationBody = new ApplicationCreateRequest
+        {
+            applicationDate = DateTimeOffset.UtcNow.AddHours(-4),
+            factoryUuid = factory.ExternalUid,
+            markingLineUuid = markingLine.ExternalUid,
+            //locationUuid = location.ExternalUid,
+            result = 0,
+            type = 2,
+            groupCodes = package.Content.Select(x => new GroupCode()
+            {
+                groupCode = x.Bundle,
+                codes = x.Packs.ToArray()
+            }).ToList()
+        };
+
+        var response = await _emissionService.CreateCodeApplication(applicationBody);
+
+        if (!response.Success)
+        {
+            package.Comment = response.Message ?? "No error text provided";
+            package.AddStatus(-4);
+            _context.Entry(package).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return;
+        }
+
+        package.Status = 4;
+        package.AddStatus(4);
+        package.ContentApplicationGuid = response.Content?.uuid;
+        _context.Entry(package).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
+
+        await Task.Delay(1000);
+
+        await container.Publish(new ProcessAggregationStatus5 { Container = package });
+    }
+}

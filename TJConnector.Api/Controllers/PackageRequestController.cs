@@ -31,7 +31,8 @@ public class PackageRequestController : ControllerBase
         IExternalContainer externalContainer,
         IExternalEmission externalEmission,
         ILogger<PackageRequestController> logger,
-        IBusControl bus)
+        IBusControl bus
+        )
 
     {
         _context = context;
@@ -75,9 +76,6 @@ public class PackageRequestController : ControllerBase
             return BadRequest(ex.Message);
         }
 
-        await Task.Delay(500);
-
-
         var localPackages = new List<Package>();
 
         foreach (PackageCouple link in request.packages)
@@ -103,7 +101,7 @@ public class PackageRequestController : ControllerBase
             return BadRequest(ex.Message);
         }
 
-        //await _bus.Publish(new OrderCreated { OrderId = localRequest.Id, ContainerIds = localPackages.Select(p => p.Id).ToList() });
+        await _bus.Publish(new ProcessContainerStatus1 { Containers = localPackages });
 
         return Ok(localRequest);
     }
@@ -126,6 +124,18 @@ public class PackageRequestController : ControllerBase
         return request;
     }
 
+    [HttpGet("reprocess/{id}")]
+    public async Task<ActionResult> ReprocessElement(int id)
+    {
+        var localPackage = await _context.Packages.FirstOrDefaultAsync(x => x.Id == id);
+
+        if (localPackage == null)
+            return NotFound();
+        await _bus.Publish(new ReprocessContainer0 { Container = localPackage });
+
+        return Ok();
+    }
+
     [HttpGet("test/{id}")]
     public async Task<ActionResult<ContainerInfoResponse>> GetExternalOrderById(string id)
     {
@@ -134,11 +144,11 @@ public class PackageRequestController : ControllerBase
     }
 
     [HttpPost("test/post")]
-    public async Task<ActionResult<CodeOrder>> ProcessCodeEmission(List<string> ids)
+    public async Task<ActionResult<ListRequestRequest>> ProcessCodeEmission(string[] ids)
     {
         var containerStatusList = await _externalContainer.ContainerInfoList(new ListRequestRequest
         {
-            filter = new Filter { code = ids }
+            filters = new Filter { code = ids }
         });
         return Ok(containerStatusList);
     }

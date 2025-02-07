@@ -8,6 +8,7 @@ using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Model.ExternalResponses.Container;
 using TJConnector.StateSystem.Model.ExternalResponses.Generic;
 using TJConnector.StateSystem.Model.ExternalResponses.MarkingCode;
+using TJConnector.StateSystem.Model.ExternalResponses.Product;
 using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.StateSystem.Services.Implementation
@@ -94,7 +95,7 @@ namespace TJConnector.StateSystem.Services.Implementation
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorResponse = await response.Content.ReadFromJsonAsync<ContainerOperationInfoResponse>();
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
                     _logger.LogError($"Failed to fetch application info for UUID {uuid}. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
                     return new CustomResult<ContainerOperationInfoResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
                 }
@@ -155,9 +156,32 @@ namespace TJConnector.StateSystem.Services.Implementation
         {
             throw new NotImplementedException();
         }
-        public Task<CustomResult<List<ContainerInfoResponse>>> ContainerInfoList(ListRequestRequest body)
+        public async Task<CustomResult<ListResponse<ContainerInfoResponse>>> ContainerInfoList(ListRequestRequest body)
         {
-            throw new NotImplementedException();
+            if (body == null)
+            {
+                _logger.LogError("List request body cannot be null.");
+                return new CustomResult<ListResponse<ContainerInfoResponse>> { Success = false, Message = "Request body is required." };
+            }
+
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("container/find", body);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError($"Failed to fetch product list. Status code: {response.StatusCode}");
+                    return new CustomResult<ListResponse<ContainerInfoResponse>> { Success = false, Message = $"HTTP error: {response.StatusCode}" };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<ListResponse<ContainerInfoResponse>>();
+                return new CustomResult<ListResponse<ContainerInfoResponse>> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while fetching product list.");
+                return new CustomResult<ListResponse<ContainerInfoResponse>> { Success = false, Message = ex.Message };
+            }
         }
         public Task<CustomResult<ContainerRegisterResponse>> ContainerRegister(ContainerRegisterRequest codes)
         {
