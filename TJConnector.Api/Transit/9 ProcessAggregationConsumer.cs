@@ -25,16 +25,16 @@ public class ProcessAggregationConsumer : IConsumer<ProcessAggregationDocument9>
         var response = await _containerService.ContainerOperationProcess
             (new ProcessDocument { uuids = new Guid[] { package.AggregationGuid.Value } });
 
-        if (response.Content?.ProcessResult == null || package.AggregationGuid == null)
-        {
-            package.Status = -7;
-            package.AddStatus(-7);
-            package.Comment = "Failed to process application request";
-            _context.Entry(package).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            return;
-        }
-        var errorMessage = response.Content.ProcessResult[package.AggregationGuid.Value];
+        //if (response.Content?.ProcessResult == null || package.AggregationGuid == null)
+        //{
+        //    package.Status = -7;
+        //    package.AddStatus(-7);
+        //    package.Comment = "Failed to process application request";
+        //    _context.Entry(package).State = EntityState.Modified;
+        //    await _context.SaveChangesAsync();
+        //    return;
+        //}
+        var errorMessage = response.Content?.ProcessResult?[package.AggregationGuid.Value];
 
         if (errorMessage?.message != null || !response.Success)
         {
