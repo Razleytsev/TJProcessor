@@ -8,7 +8,7 @@
 </div>
 
 <div class="container">
-    <div class="table-container">
+    <div class="table-container" style="width: 75%;font-size: 12px;">
         @if (packageRequests == null)
         {
             <p>Loading...</p>
@@ -18,7 +18,7 @@
             <CustomTable Items="packageRequests" Columns="columns" OnRowClick="EventCallback.Factory.Create<PackageRequest>(this, OnPackageRequestClick)" SelectedItem="selectedPackageRequest" />
         }
     </div>
-    <div class="details-container">
+    <div class="details-container" style="width: 25%;font-size: 12px;">
         @if (selectedPackageRequest != null && selectedPackageRequest.Packages.Any())
         {
             <h4>Package Details</h4>

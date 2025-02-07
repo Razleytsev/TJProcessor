@@ -28,16 +28,16 @@ public class ProcessApplicationConsumer : IConsumer<ProcessApplicationRequest6>
         var response = await _emissionService.ProcessCodeApplication
             (new ProcessDocument { uuids = new Guid[] { package.ContentApplicationGuid.Value } });
 
-        if (response.Content?.ProcessResult == null || package.ContentApplicationGuid == null)
-        {
-            package.Status = -7;
-            package.AddStatus(-7);
-            package.Comment = "Failed to process application request";
-            _context.Entry(package).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
-            await container.Publish(new ProcessAggregationStatus5 { Container = package });
-        }
-        var errorMessage = response.Content.ProcessResult[package.ContentApplicationGuid.Value];
+        //if (response.Content?.ProcessResult == null || package.ContentApplicationGuid == null)
+        //{
+        //    package.Status = -7;
+        //    package.AddStatus(-7);
+        //    package.Comment = "Failed to process application request";
+        //    _context.Entry(package).State = EntityState.Modified;
+        //    await _context.SaveChangesAsync();
+        //    return;
+        //}
+        var errorMessage = response.Content?.ProcessResult?[package.ContentApplicationGuid.Value];
 
         if (errorMessage?.message != null || !response.Success)
         {
