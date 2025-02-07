@@ -18,7 +18,12 @@
 <body>
     <component type="typeof(App)" render-mode="ServerPrerendered" />
 
-    <div id="blazor-error-ui">
+    <div id="blazor-error-ui"; display:none; style="
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: #fff;">
         <environment include="Staging,Production">
             An error has occurred. This application may no longer respond until reloaded.
         </environment>
@@ -42,6 +47,7 @@
             URL.revokeObjectURL(url);
         }
     </script>
+    <script src="js/interop.js"></script>
     <script src="_framework/blazor.server.js"></script>
 </body>
 </html>

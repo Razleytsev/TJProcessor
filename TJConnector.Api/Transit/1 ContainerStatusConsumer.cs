@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using TJConnector.Api.Hubs;
 using TJConnector.Postgres;
+using TJConnector.Postgres.Entities;
 using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Services.Contracts;
 
@@ -27,7 +28,7 @@ public class ContainerStatusConsumer : IConsumer<ProcessContainerStatus1>
         containers.ForEach(x => x.Status = -1);
 
         foreach (var container in containers)
-            container.AddStatus(-1);
+            container.StatusHistory = new[] { new StatusHistory { Status = -1, StatusDate = DateTimeOffset.UtcNow } };
 
         var batches = containers.Chunk(50);
 

@@ -27,7 +27,7 @@ public class ReprocessConsumer : IConsumer<ReprocessContainer0>
 
         if(package.Content == null)
         {
-            await container.Publish(new ProcessApplicationRequest6 { Container = package });
+            await container.Publish(new ProcessExternalDbStatus2 { Container = package });
             return;
         }
         if (package.AggregationGuid != null)

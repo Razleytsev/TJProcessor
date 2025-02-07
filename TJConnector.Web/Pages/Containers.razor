@@ -1,0 +1,286 @@
+﻿@page "/containers"
+@using TJConnector.SharedLibrary.DTOs.Forms
+@inject IPackageRequestService RequestService
+@inject IJSRuntime JSRuntime
+
+<h3>Package Requests</h3>
+
+<button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowProcessCodeModal">Download codes</button>
+
+<div class="container">
+    <div class="table-container" style="font-size: 12px;">
+        @if (packageRequests == null)
+        {
+            <p>Loading...</p>
+        }
+        else
+        {
+            <CustomTable Items="packageRequests" Columns="columns" OnRowClick="EventCallback.Factory.Create<PackageRequest>(this, OnPackageRequestClick)" SelectedItem="selectedPackageRequest" />
+        }
+    </div>
+    <div class="details-container" style="font-size: 12px;">
+        @if (selectedPackageRequest != null)
+        {
+            <h4>Package Request Information</h4>
+            <div>
+                <p><strong>Filename:</strong> @selectedPackageRequest.Filename</p>
+                <p><strong>User:</strong> @selectedPackageRequest.User</p>
+                <p><strong>Status:</strong> @selectedPackageRequest.Status</p>
+                <p><strong>Record Date:</strong> @selectedPackageRequest.RecordDate</p>
+            </div>
+            <h5>Packages</h5>
+            <div class="packages-table-container" style="height: 30%; overflow-y: auto;">
+                <table class="table table-borderless">
+                    <thead>
+                        <tr>
+                            <th>Code</th>
+                            <th>SSCC Code</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var package in selectedPackageRequest.Packages ?? new List<Package>())
+                        {
+                            <tr @onclick="() => OnPackageClick(package)" class="@(selectedPackage?.Id == package.Id ? "highlighted-row" : "")">
+                                <td>@package.Code</td>
+                                <td>@package.SSCCCode</td>
+                                <td @onmouseover="() => ShowStatusHistoryTooltip(package.StatusHistory)" @onmouseout="HideStatusHistoryTooltip">@GetStatusTypeString(package.Status)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="package-details-container" style="height: 70%; overflow-y: auto;">
+                @if (selectedPackage != null)
+                {
+                    <h5>Package Details</h5>
+                    <div>
+                        <p><strong>Code:</strong> @selectedPackage.Code</p>
+                        <p><strong>SSCC Code:</strong> @selectedPackage.SSCCCode</p>
+                        <p><strong>Status:</strong> @GetStatusTypeString(selectedPackage.Status)</p>
+                        <p><strong>Content Application GUID:</strong> @selectedPackage.ContentApplicationGuid</p>
+                        <p><strong>Aggregation GUID:</strong> @selectedPackage.AggregationGuid</p>
+                        <p><strong>Comment:</strong> @selectedPackage.Comment</p>
+                    </div>
+                    @if (selectedPackage.Status < 0)
+                    {
+                        <button class="btn btn-primary" @onclick="ReprocessPackage">Reprocess</button>
+                    }
+                }
+                else
+                {
+                    <p>Select a package to view details.</p>
+                }
+            </div>
+        }
+        else
+        {
+            <p>Select a package request to view details.</p>
+        }
+    </div>
+</div>
+
+
+@if (showProcessCodeModal)
+{
+    <div class="modal" style="display: block; font-size: 12px;">
+        <div class="modal-dialog" style="width:auto">
+            <div class="modal-content" style="width: 900px;">
+                <div class="modal-header">
+                    <h5 class="modal-title">Process mastercases</h5>
+                    <button type="button" class="close" @onclick="CloseProcessCodeModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6" style="width:40%" >
+                            <textarea class="form-control" style="height: 300px; font-size: 12px;" @bind="manualCodeInput"></textarea>
+                            <button class="btn btn-secondary mt-2" @onclick="LoadCodesFromFile">Load from file</button>
+                        </div>
+                        <div class="col-6" style="width:60%;">
+                            <table class="table table-bordered" >
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>SSCC</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var package in packageCouples)
+                                    {
+                                        <tr class="@(package.IsValid ? "" : "table-danger")">
+                                            <td style=" word-break: break-word;overflow-wrap: break-word; width:50%;">@package.Code</td>
+                                            <td style=" word-break: break-word;overflow-wrap: break-word; width:50%;">@package.SSCCCode</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    @if (validationError)
+                    {
+                        <p class="text-danger" style="font-size: 12px;">Some codes do not pass validation. Please correct them.</p>
+                    }
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" @onclick="ProcessCodes">Process</button>
+                    <button class="btn btn-secondary" @onclick="CloseProcessCodeModal">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IEnumerable<PackageRequest>? packageRequests;
+    private List<CustomTable<PackageRequest>.ColumnDefinition<PackageRequest>> columns = new();
+    private PackageRequest? selectedPackageRequest;
+    private Package? selectedPackage;
+    private bool showStatusHistoryTooltip = false;
+    private StatusHistory[] statusHistoryForTooltip = new StatusHistory[0];
+    private bool showProcessCodeModal = false;
+    private string manualCodeInput = string.Empty;
+    private List<PackageCouple> packageCouples = new();
+    private bool validationError = false;
+    private string? filename = "NoFile";
+    [Inject] private IJSRuntime JS { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        packageRequests = await RequestService.GetPackageRequestsAsync();
+
+        columns = new()
+        {
+            new() { Header = "ID", Value = pr => pr.Id },
+            new() { Header = "Filename", Value = pr => pr.Filename ?? "N/A" },
+            new() { Header = "User", Value = pr => pr.User ?? "N/A" },
+            new() { Header = "Status", Value = pr => pr.Status },
+            new() { Header = "Record Date", Value = pr => pr.RecordDate.ToString("yyyy-MM-dd HH:mm:ss") }
+        };
+    }
+
+    private async Task OnPackageRequestClick(PackageRequest packageRequest)
+    {
+        selectedPackageRequest = await RequestService.GetPackageRequestByIdAsync(packageRequest.Id);
+        selectedPackage = null;
+    }
+
+    private void OnPackageClick(Package package)
+    {
+        selectedPackage = package;
+    }
+
+    private void ShowStatusHistoryTooltip(StatusHistory[] statusHistory)
+    {
+        statusHistoryForTooltip = statusHistory;
+        showStatusHistoryTooltip = true;
+    }
+
+    private void HideStatusHistoryTooltip()
+    {
+        showStatusHistoryTooltip = false;
+    }
+
+    private async Task ReprocessPackage()
+    {
+        if (selectedPackage != null)
+        {
+            await RequestService.ReprocessPackage(selectedPackage.Id);
+            selectedPackageRequest = await RequestService.GetPackageRequestByIdAsync(selectedPackageRequest.Id);
+            selectedPackage = selectedPackageRequest.Packages?.FirstOrDefault(p => p.Id == selectedPackage.Id);
+        }
+    }
+
+    private void ShowProcessCodeModal()
+    {
+        showProcessCodeModal = true;
+    }
+
+    private void CloseProcessCodeModal()
+    {
+        showProcessCodeModal = false;
+        manualCodeInput = string.Empty;
+        packageCouples.Clear();
+        validationError = false;
+    }
+
+    private void ParseManualInput()
+    {
+        packageCouples.Clear();
+        var lines = manualCodeInput.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < lines.Length; i += 2)
+        {
+            var code = i < lines.Length ? lines[i].Trim() : "";
+            var sscc = i + 1 < lines.Length ? lines[i + 1].Trim() : "";
+            var isValidCode = System.Text.RegularExpressions.Regex.IsMatch(code, @"^01\d+21.*$");
+            var isValidSSCC = System.Text.RegularExpressions.Regex.IsMatch(sscc, @"^00\d+$");
+            packageCouples.Add(new PackageCouple
+                {
+                    Code = code,
+                    SSCCCode = sscc,
+                    IsValid = isValidCode && isValidSSCC
+                });
+        }
+        validationError = packageCouples.Any(p => !p.IsValid);
+    }
+
+    private async Task LoadCodesFromFile()
+    {
+        var fileContent = await JSRuntime.InvokeAsync<string>("readFileContent");
+        if (!string.IsNullOrEmpty(fileContent))
+        {
+            manualCodeInput = fileContent;
+            ParseManualInput();
+        }
+    }
+
+    private async Task ProcessCodes()
+    {
+        ParseManualInput();
+        if (validationError)
+        {
+            return;
+        }
+
+        var packageRequestForm = new PackageRequestForm
+            {
+                User = "",
+                Filename = filename,
+                packages = packageCouples
+            };
+
+        await RequestService.CreatePackageRequestAsync(packageRequestForm);
+        CloseProcessCodeModal();
+    }
+    private string GetStatusTypeString(int type)
+    {
+        return type switch
+        {
+            -12 => "Aggreagation: Unknown status",
+            -11 => "Aggregation: Failed",
+            -10 => "Aggregation: Bad external status",
+            -9 => "Aggregation: Process error",
+            -8 => "Aggregation: Sending error",
+            -7 => "Application: Process error",
+            -6 => "Application: Failed",
+            -5 => "Application: Bad external status",
+            -4 => "Application: Fail to sent",
+            -3 => "External DB: No content",
+            -2 => "External DB: Not found",
+            -1 => "CisInfo: NOK",
+            0 => "Created",
+            1 => "CisInfo: OK",
+            2 => "External DB: Status OK",
+            3 => "External DB: Content received",
+            4 => "Application: Sent",
+            5 => "Application: Processing",
+            6 => "Application: Created",
+            7 => "Application: Processing",
+            8 => "Aggregation: Sent",
+            9 => "Aggregation: Processing",
+            10 => "Aggregation: Created",
+            11 => "Aggregation: Processing",
+            12 => "Reported",
+            _ => "Unknown"
+        };
+    }
+}

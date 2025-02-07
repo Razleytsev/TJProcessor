@@ -40,7 +40,7 @@ public class ExternalDbStatusConsumer : IConsumer<ProcessExternalDbStatus2>
 
         if (dbInfo == null)
         {
-            package.Comment = "Package don't exist in external database";
+            package.Comment = "Package doesn't exist in external database";
             package.AddStatus(-2);
             _context.Entry(package).State = EntityState.Modified;
             await _context.SaveChangesAsync();

@@ -8,9 +8,9 @@ namespace TJConnector.Web.Services.Contracts
     public interface IPackageRequestService
     {
         Task<IEnumerable<PackageRequest>> GetPackageRequestsAsync();
-
         Task<PackageRequest> GetPackageRequestByIdAsync(int id);
         Task<PackageRequest> CreatePackageRequestAsync(PackageRequestForm form);
         Task<ProcessResponse> ProcessPackageRequestAsync(int uuid);
+        Task<int> ReprocessPackage(int id);
     }
 }

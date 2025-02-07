@@ -38,16 +38,16 @@ public class ProcessAggregationConsumer : IConsumer<ProcessAggregationDocument9>
 
         if (errorMessage?.message != null || !response.Success)
         {
-            package.Status = -7;
-            package.AddStatus(-7);
+            package.Status = -9;
+            package.AddStatus(-9);
             package.Comment = "Failed to process application request";
             _context.Entry(package).State = EntityState.Modified;
             await _context.SaveChangesAsync();
             return;
         }
 
-        package.Status = -7;
-        package.AddStatus(-7);
+        package.Status = 9;
+        package.AddStatus(9);
         _context.Entry(package).State = EntityState.Modified;
         await _context.SaveChangesAsync();
 

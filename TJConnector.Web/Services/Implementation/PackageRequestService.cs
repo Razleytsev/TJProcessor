@@ -1,4 +1,7 @@
-﻿using System.Net.Http;
+﻿using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore.Metadata;
+using System.Net.Http;
 using TJConnector.Postgres.Entities;
 using TJConnector.SharedLibrary.DTOs.Forms;
 using TJConnector.StateSystem.Model.ExternalResponses.Generic;
@@ -51,6 +54,13 @@ namespace TJConnector.Web.Services.Implementation
         public Task<ProcessResponse> ProcessPackageRequestAsync(int uuid)
         {
             throw new NotImplementedException();
+        }
+
+        public async Task<int> ReprocessPackage(int id)
+        {
+            var response = await _httpClient.GetAsync($"api/packagerequest/reprocess/{id}");
+            response.EnsureSuccessStatusCode();
+            return id;
         }
     }
 }

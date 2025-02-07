@@ -38,9 +38,9 @@ public class AggregationStatusConsumer : IConsumer<ProcessAggregationDocumentSta
         switch (status?.status)
         {
             case 0:
-                package.Status = -9;
+                package.Status = -10;
                 package.Comment = "Saved with error in TJ state system";
-                package.AddStatus(-9);
+                package.AddStatus(-10);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 return;
@@ -52,8 +52,8 @@ public class AggregationStatusConsumer : IConsumer<ProcessAggregationDocumentSta
                 await container.Publish(new ProcessAggregationDocument9 { Container = package });
                 return;
             case 2:
-                package.Status = -5;
-                package.AddStatus(-5);
+                package.Status = -10;
+                package.AddStatus(-10);
                 package.Comment = "Archived in TJ state system";
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
@@ -63,7 +63,7 @@ public class AggregationStatusConsumer : IConsumer<ProcessAggregationDocumentSta
                 package.Comment = "Processing in TJ state system";
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await Task.Delay(10000);
+                await Task.Delay(5000);
                 await container.Publish(new ProcessAggregationDocumentStatus8 { Container = package });
                 return;
             case 4:
@@ -76,6 +76,7 @@ public class AggregationStatusConsumer : IConsumer<ProcessAggregationDocumentSta
             case 5:
                 package.Status = 12;
                 package.AddStatus(12);
+                package.Comment = "Reported";
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 return;

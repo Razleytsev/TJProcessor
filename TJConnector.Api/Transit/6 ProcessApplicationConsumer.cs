@@ -49,8 +49,8 @@ public class ProcessApplicationConsumer : IConsumer<ProcessApplicationRequest6>
             return;
         }
 
-        package.Status = -7;
-        package.AddStatus(-7);
+        package.Status = 7;
+        package.AddStatus(7);
         _context.Entry(package).State = EntityState.Modified;
         await _context.SaveChangesAsync();
 

@@ -56,10 +56,9 @@ h1:focus {
 }
 
 
-
 .container {
     display: flex;
-    height: 100vh; /* Full viewport height */
+    height: 100%; /* Full viewport height */
     gap: 20px;
     padding: 20px;
     margin: 0;
@@ -68,35 +67,35 @@ h1:focus {
 }
 
 .details-container {
-    flex: 1; 
+    flex: 4; 
     padding: 10px;
     border-right: 1px solid #ddd; 
     position: sticky;
     top: 0;
-    height: 100vh;
+    height: 100%;
     overflow-y: auto;
     margin: 0;
     box-sizing: border-box;
 }
 
 .table-container {
-    flex: 3;
+    flex: 6;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     margin: 0;
     padding: 0;
     box-sizing: border-box;
-    width: 100%; 
 }
 
-.table-wrapper {
-    flex: 1;
+.packages-table-container {
+    height: 50%;
     overflow-y: auto;
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    width: 100%;
+}
+
+.package-details-container {
+    height: 50%;
+    overflow-y: auto;
 }
 
 .table {
@@ -132,4 +131,25 @@ h1:focus {
 .highlighted-row {
     background-color: #f0f0f0;
     font-weight: bold;
+}
+
+.status-history-tooltip {
+    position: absolute;
+    background: white;
+    border: 1px solid #ddd;
+    padding: 5px;
+    z-index: 1000;
+}
+
+.modal {
+    display: block;
+    background: rgba(0, 0, 0, 0.5);
+}
+
+.modal-dialog {
+    margin: 40px auto;
+}
+
+.modal-content {
+    padding: 50px;
 }

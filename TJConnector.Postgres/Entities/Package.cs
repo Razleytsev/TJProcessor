@@ -10,7 +10,7 @@
         public Guid? ContentApplicationGuid { get; set; }
         public Guid? AggregationGuid { get; set; }
         public DateTimeOffset RecordDate { get; set; }
-        public StatusHistory[] StatusHistory { get; set; } = new StatusHistory[0];
+        public StatusHistory[]? StatusHistory { get; set; } = new StatusHistory[0];
         public string? Comment { get; set; } = string.Empty;
         public int PackageRequestId { get; set; }
 

@@ -18,5 +18,6 @@ namespace TJConnector.SharedLibrary.DTOs.Forms
     {
         public string Code { get; set; } = "";
         public string SSCCCode { get; set; } = "";
+        public bool IsValid { get; set; }
     }
 }

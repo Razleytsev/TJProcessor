@@ -4,7 +4,7 @@
 <h3>Products</h3>
 
 <div class="container">
-    <div class="table-container">
+    <div class="table-container" style="width: 75%;font-size: 12px;">
         @if (products == null)
         {
             <p>Loading...</p>
@@ -14,7 +14,7 @@
             <CustomTable Items="products" Columns="columns" OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)" SelectedItem="selectedProduct" />
         }
     </div>
-    <div class="details-container">
+    <div class="details-container" style="width: 25%;font-size: 12px;">
         @if (selectedProductExternalInfo != null)
         {
             <h4>External Product Information</h4>
@@ -54,7 +54,7 @@
                 new() { Header = "GTIN", Value = p => p.Gtin },
                 new() { Header = "Type", Value = p => GetProductTypeString(p.Type) },
                 new() { Header = "External UUID", Value = p => p.ExternalUid },
-                new() { Header = "Record Date", Value = p => p.RecordDate }
+                new() { Header = "Record Date", Value = p => p.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") }
             };
         }
         catch (Exception ex)

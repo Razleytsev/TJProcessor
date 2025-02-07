@@ -45,7 +45,9 @@
                     {
                         <tr>
                             <td>@GetStatusTypeString(history.Status)</td>
-                            <td>@ToLocalTime(history.StatusDate)</td>
+                            <td>
+                                @history.StatusDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+                            </td>
                         </tr>
                     }
                 </tbody>
@@ -217,7 +219,7 @@
             new() { Header = "Type", Value = o => GetProductTypeString(o.Type) },
             new() { Header = "Gtin", Value = o => o.Product?.Gtin ?? "N/A"  },
             new() { Header = "Count", Value = o => o.Count },
-            new() { Header = "Created At", Value = o => ToLocalTime(o.RecordDate) },
+            new() { Header = "Created At", Value = o => o.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") },
             new() { Header = "Status", Value = o => GetStatusTypeString(o.Status) },
             new() { Header = "Description", Value = o => o.Description },
             new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
@@ -386,8 +388,4 @@
         };
     }
 
-    private DateTime ToLocalTime(DateTimeOffset dateTimeOffset)
-    {
-        return dateTimeOffset.ToLocalTime().DateTime;
-    }
 }
