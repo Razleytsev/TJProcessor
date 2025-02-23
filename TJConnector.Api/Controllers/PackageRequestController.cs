@@ -101,7 +101,7 @@ public class PackageRequestController : ControllerBase
             return BadRequest(ex.Message);
         }
 
-        await _bus.Publish(new ProcessContainerStatus1 { Containers = localPackages });
+        await _bus.Publish(new StateCheckSSCCBody1 { Containers = localPackages });
 
         return Ok(localRequest);
     }
@@ -143,13 +143,34 @@ public class PackageRequestController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("test/post")]
-    public async Task<ActionResult<ListRequestRequest>> ProcessCodeEmission(string[] ids)
+    [HttpPost("external/code/find")]
+    public async Task<ActionResult<ListResponse<ContainerInfoResponse>>> ProcessCodeEmission(string[] ids)
     {
-        var containerStatusList = await _externalContainer.ContainerInfoList(new ListRequestRequest
+        try
         {
-            filters = new Filter { code = ids }
-        });
-        return Ok(containerStatusList);
+            var result = await _externalContainer.ContainerInfoList(new ListRequestRequest
+            {
+                filters = new Filter { code = ids }
+            });
+
+            if (result.Content?.statusCode != 200)
+            {
+                _logger.LogWarning($"Failed to fetch external codes: {result.Message}");
+                return BadRequest(result.Message);
+            }
+
+            if (result.Content?.items == null)
+            {
+                _logger.LogWarning("No codes returned from external API.");
+                return BadRequest("No codes returned from external API.");
+            }
+
+            return Ok(result.Content.items);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to fetch external codes.");
+            return StatusCode(500, "An error occurred while fetching external code information.");
+        }
     }
 }

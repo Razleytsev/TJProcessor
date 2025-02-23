@@ -54,24 +54,13 @@
                 new() { Header = "GTIN", Value = p => p.Gtin },
                 new() { Header = "Type", Value = p => GetProductTypeString(p.Type) },
                 new() { Header = "External UUID", Value = p => p.ExternalUid },
-                new() { Header = "Record Date", Value = p => p.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") }
+                new() { Header = "Record Date", Value = p => LTime(p.RecordDate) }
             };
         }
         catch (Exception ex)
         {
             Console.WriteLine($"Error fetching products: {ex.Message}");
         }
-    }
-
-    private string GetProductTypeString(int type)
-    {
-        return type switch
-        {
-            0 => "Pack",
-            1 => "Bundle",
-            2 => "Mastercase",
-            _ => "Unknown"
-        };
     }
 
     private async Task OnProductClick(Product product)
@@ -95,5 +84,20 @@
             Console.WriteLine($"Error fetching external product info: {ex.Message}");
             selectedProductExternalInfo = null;
         }
+    }
+
+    public string LTime(DateTimeOffset time)
+    {
+        return time.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss");
+    }
+    private string GetProductTypeString(int type)
+    {
+        return type switch
+        {
+            0 => "Pack",
+            1 => "Bundle",
+            2 => "Mastercase",
+            _ => "Unknown"
+        };
     }
 }

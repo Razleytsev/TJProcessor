@@ -8,20 +8,20 @@ using TJConnector.StateSystem.Services.Implementation;
 
 namespace TJConnector.Api.Transit;
 
-public class ExternalDbContentConsumer : IConsumer<ProcessExternalDbContent3>
+public class ExternalDbContent : IConsumer<ExternalDbContentBody3>
 {
     private readonly ApplicationDbContext _context;
     private readonly IExternalDBData _externalDBData;
-    private readonly ILogger<ExternalDbContentConsumer> _logger;
+    private readonly ILogger<ExternalDbContent> _logger;
 
-    public ExternalDbContentConsumer(ApplicationDbContext context, IExternalDBData externalDBData , ILogger<ExternalDbContentConsumer> logger)
+    public ExternalDbContent(ApplicationDbContext context, IExternalDBData externalDBData , ILogger<ExternalDbContent> logger)
     {
         _externalDBData = externalDBData;
         _context = context;
         _logger = logger;   
     }
 
-    public async Task Consume(ConsumeContext<ProcessExternalDbContent3> container)
+    public async Task Consume(ConsumeContext<ExternalDbContentBody3> container)
     {
         var package = container.Message.Container;
 
@@ -44,6 +44,6 @@ public class ExternalDbContentConsumer : IConsumer<ProcessExternalDbContent3>
         _context.Entry(package).State = EntityState.Modified;
         await _context.SaveChangesAsync();
 
-        await container.Publish(new ProcessEmissionService4 { Container = package });
+        await container.Publish(new StateCreateApplicationBody4 { Container = package });
     }
 }

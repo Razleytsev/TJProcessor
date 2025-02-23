@@ -8,20 +8,20 @@ using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Transit;
 
-public class EmissionServiceConsumer : IConsumer<ProcessEmissionService4>
+public class StateCreateApplication : IConsumer<StateCreateApplicationBody4>
 {
     private readonly IExternalEmission _emissionService;
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<EmissionServiceConsumer> _logger;
+    private readonly ILogger<StateCreateApplication> _logger;
 
-    public EmissionServiceConsumer(IExternalEmission emissionService, ApplicationDbContext context, ILogger<EmissionServiceConsumer> logger)
+    public StateCreateApplication(IExternalEmission emissionService, ApplicationDbContext context, ILogger<StateCreateApplication> logger)
     {
         _emissionService = emissionService;
         _context = context;
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<ProcessEmissionService4> container)
+    public async Task Consume(ConsumeContext<StateCreateApplicationBody4> container)
     {
         var package = container.Message.Container;
 
@@ -32,11 +32,10 @@ public class EmissionServiceConsumer : IConsumer<ProcessEmissionService4>
         //var location = await _context.Locations.FindAsync(1);
         var markingLine = await _context.MarkingLines.FindAsync(1);
 
-        if(factory == null || 
-            //location == null || 
+        if(factory == null ||  
             markingLine == null)
         {
-            package.Comment = "Check metadata (factory, location, marking line)";
+            package.Comment = "Check metadata (factory, marking line)";
             package.AddStatus(-4);
             _context.Entry(package).State = EntityState.Modified;
             await _context.SaveChangesAsync();
@@ -57,7 +56,6 @@ public class EmissionServiceConsumer : IConsumer<ProcessEmissionService4>
             applicationDate = DateTimeOffset.UtcNow.AddHours(-4),
             factoryUuid = factory.ExternalUid,
             markingLineUuid = markingLine.ExternalUid,
-            //locationUuid = location.ExternalUid,
             result = 0,
             type = 2,
             groupCodes = package.Content.Select(x => new GroupCode()
@@ -86,6 +84,6 @@ public class EmissionServiceConsumer : IConsumer<ProcessEmissionService4>
 
         await Task.Delay(1000);
 
-        await container.Publish(new ProcessAggregationStatus5 { Container = package });
+        await container.Publish(new StateApplicationStatusBody5 { Container = package });
     }
 }

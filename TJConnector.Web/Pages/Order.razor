@@ -10,7 +10,7 @@
 <button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowCreateOrderModal">Create New Order</button>
 
 <div class="container">
-    <div class="table-container" style="width: 75%;font-size: 12px;">
+    <div class="table-container" style="font-size: 12px;">
         @if (orders == null)
         {
             <p>Loading...</p>
@@ -20,17 +20,17 @@
             <CustomTable Items="orders" Columns="columns" OnRowClick="EventCallback.Factory.Create<CodeOrder>(this, OnOrderClick)" SelectedItem="selectedOrder" />
         }
     </div>
-    <div class="details-container" style="width: 25%;font-size: 12px;">
-        @if (selectedOrder != null)
+    <div class="details-container" style="font-size: 12px;">
+        @if (selectedOrderInfo != null)
         {
             <h4>Order Information</h4>
             <div>
-                <p><strong>Type:</strong> @GetProductTypeString(selectedOrder.Type)</p>
-                <p><strong>Status:</strong> @GetStatusTypeString(selectedOrder.Status)</p>
-                <p><strong>Gtin:</strong> @selectedOrder.Product?.Gtin</p>
-                <p><strong>Created At:</strong> @selectedOrder.RecordDate</p>
-                <p><strong>Count:</strong> @selectedOrder.Count</p>
-                <p><strong>External GUID:</strong> @selectedOrder.ExternalGuid</p>
+                <p><strong>Type:</strong> @GetProductTypeString(selectedOrderInfo.Type)</p>
+                <p><strong>Status:</strong> @GetStatusTypeString(selectedOrderInfo.Status)</p>
+                <p><strong>Gtin:</strong> @selectedOrderInfo.Product?.Gtin</p>
+                <p><strong>Created At:</strong> @LTime(selectedOrderInfo.RecordDate)</p>
+                <p><strong>Count:</strong> @selectedOrderInfo.Count</p>
+                <p><strong>External GUID:</strong> @selectedOrderInfo.ExternalGuid</p>
             </div>
             <h5>Status History</h5>
             <table class="table table-borderless">
@@ -41,12 +41,12 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var history in selectedOrder.StatusHistoryJson)
+                    @foreach (var history in selectedOrderInfo.StatusHistoryJson)
                     {
                         <tr>
                             <td>@GetStatusTypeString(history.Status)</td>
                             <td>
-                                @history.StatusDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+                                @LTime(history.StatusDate)
                             </td>
                         </tr>
                     }
@@ -74,7 +74,7 @@
                 </div>
                 <div class="modal-body">
                     <form>                        
-                        <div class="form-group">
+                        <div class="form-group">    
                             <label>Type</label>
                             <select class="form-control" @onchange="OnTypeChange">
                                 <option value="Pack">Pack</option>
@@ -97,28 +97,28 @@
                         {
                             <div class="form-group" style="position: relative;">
                                 <label>GTIN</label>
-                                <input type="text" class="form-control" @bind="gtinInput" @oninput="OnGtinInput" />
-                                @if (filteredProducts != null && filteredProducts.Any())
+                                <input type="text" 
+                                class="form-control" 
+                                @bind="gtinInput" 
+                                @oninput="OnGtinInput"
+                                @onfocus="ShowGtinDropdown" 
+                                @onblur="HideGtinDropdown" />
+                                @if (showGtinDropdown && filteredProducts != null && filteredProducts.Any())
                                 {
                                     <ul class="list-group" style="position: absolute; z-index: 1000; width: 100%;">
                                         @foreach (var product in filteredProducts)
                                         {
-                                            <li class="list-group-item" @onclick="() => OnGtinSelected(product)">@product.Gtin</li>
+                                            @* <li class="list-group-item" @onclick="() => OnGtinSelected(product)">@product.Gtin</li> *@
+                                            <li class="list-group-item" @onclick="() => OnGtinSelected(product)" @onmouseover="() => isMouseOverDropdown = true" @onmouseout="() => isMouseOverDropdown = false">
+                                                @product.Gtin
+                                            </li>
                                         }
                                     </ul>
                                 }
                             </div>
                             <div class="form-group">
-                                <label>Product ID</label>
-                                <input type="text" class="form-control" @bind="newOrderForm.ProductId" disabled />
-                            </div>
-                            <div class="form-group">
                                 <label>External UID</label>
                                 <input type="text" class="form-control" @bind="newOrderForm.ProductUuid" disabled />
-                            </div>
-                            <div class="form-group">
-                                <label>Type</label>
-                                <input type="text" class="form-control" @bind="newOrderForm.Type" disabled />
                             </div>
                             <div class="form-group">
                                 <label>Factory</label>
@@ -148,6 +148,12 @@
                             </div>
                         }
                     </form>
+                    @if (!string.IsNullOrEmpty(validationMessage))
+                    {
+                        <div class="alert alert-danger">
+                            @validationMessage
+                        </div>
+                    }
                 </div>
                 <div class="modal-footer">
                     <button class="btn btn-primary" @onclick="CreateOrder">Create</button>
@@ -162,6 +168,7 @@
     private IEnumerable<CodeOrder>? orders;
     private List<CustomTable<CodeOrder>.ColumnDefinition<CodeOrder>> columns = new();
     private CodeOrder? selectedOrder;
+    private CodeOrder? selectedOrderInfo;
     private bool showCreateOrderModal = false;
     private OrderCreateForm newOrderForm = new();
     private IEnumerable<Product>? products;
@@ -172,13 +179,70 @@
     private bool isProcessing = false;
     private bool isDownloadingCodes = false;
     private bool isDownloadingContent = false;
-
-
+    private string validationMessage = string.Empty;
+    private bool showGtinDropdown = false;
+    private bool isMouseOverDropdown = false; 
     private string? selectedType = "Pack";
+
+    private bool IsProcessButtonActive => selectedOrderInfo?.Status == 1 || selectedOrderInfo?.Status == 2;
+    private bool IsDownloadCodesButtonActive => selectedOrderInfo?.Content is null && (selectedOrderInfo?.Status == 4 || selectedOrderInfo?.Status == 5);
+    private bool IsDownloadContentButtonActive => selectedOrderInfo?.Content is not null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        orders = await OrderService.GetOrdersAsync();
+        products = await ProductService.GetProductsAsync();
+        factories = (await MetadataService.GetFactoriesAsync()).ToList();
+        markingLines = (await MetadataService.GetMarkingLinesAsync()).ToList();
+
+        if (factories.Any()) newOrderForm.FactoryUuid = factories.First().ExternalUid;
+        if (markingLines.Any()) newOrderForm.MarkingLineUuid = markingLines.First().ExternalUid;
+
+        columns = new()
+        {
+            new() { Header = "ID", Value = o => o.Id },
+            new() { Header = "Type", Value = o => GetProductTypeString(o.Type) },
+            new() { Header = "Gtin", Value = o => o.Product?.Gtin ?? "N/A"  },
+            new() { Header = "Count", Value = o => o.Count },
+            new() { Header = "Created At", Value = o => LTime(o.RecordDate) },
+            new() { Header = "Status", Value = o => GetStatusTypeString(o.Status) },
+            new() { Header = "Description", Value = o => o.Description },
+            new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
+        };
+    }
+    private async Task OnOrderClick(CodeOrder order)
+    {
+        try
+        {
+            selectedOrder = order;
+            await UpdateExternalOrderStatus(order.Id);
+            selectedOrderInfo = await OrderService.GetOrderByIdAsync(order.Id);
+        }
+        catch(Exception ex)
+        {
+            Console.WriteLine("Failed to update external order status: " + order.Id);
+        }
+    }
+    private async Task UpdateExternalOrderStatus(int orderId)
+    {
+        var result = await OrderService.GetExternalOrderByIdAsync(orderId);
+        if (result is not null)
+        {
+            selectedOrderInfo = result;
+            //orders = await OrderService.GetOrdersAsync();
+        }
+        else
+        {
+            Console.WriteLine("Failed to update external order status: " + orderId);
+        }
+    }
+
 
     private void OnTypeChange(ChangeEventArgs e)
     {
+        validationMessage = string.Empty;
         selectedType = e.Value?.ToString() ?? "Pack";
+        showGtinDropdown = false;
         if (selectedType == "Pack")
         {
             newOrderForm.Type = 0;
@@ -197,58 +261,13 @@
         {
             gtinInput = string.Empty;
             newOrderForm.Type = 3;
+            newOrderForm.ProductId = null;
             newOrderForm.ProductUuid = null;
             newOrderForm.FactoryUuid = null;
             newOrderForm.MarkingLineUuid = null;
         }
     }
 
-    protected override async Task OnInitializedAsync()
-    {
-        orders = await OrderService.GetOrdersAsync();
-        products = await ProductService.GetProductsAsync();
-        factories = (await MetadataService.GetFactoriesAsync()).ToList();
-        markingLines = (await MetadataService.GetMarkingLinesAsync()).ToList();
-
-        if (factories.Any()) newOrderForm.FactoryUuid = factories.First().ExternalUid;
-        if (markingLines.Any()) newOrderForm.MarkingLineUuid = markingLines.First().ExternalUid;
-
-        columns = new()
-        {
-            new() { Header = "ID", Value = o => o.Id },
-            new() { Header = "Type", Value = o => GetProductTypeString(o.Type) },
-            new() { Header = "Gtin", Value = o => o.Product?.Gtin ?? "N/A"  },
-            new() { Header = "Count", Value = o => o.Count },
-            new() { Header = "Created At", Value = o => o.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") },
-            new() { Header = "Status", Value = o => GetStatusTypeString(o.Status) },
-            new() { Header = "Description", Value = o => o.Description },
-            new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
-        };
-    }
-
-    private async Task OnOrderClick(CodeOrder order)
-    {
-        await UpdateExternalOrderStatus(order.Id);
-        selectedOrder = await OrderService.GetOrderByIdAsync(order.Id);
-    }
-
-    private async Task UpdateExternalOrderStatus(int orderId)
-    {
-        var result = await OrderService.GetExternalOrderByIdAsync(orderId);
-        if (result is not null)
-        {
-            selectedOrder = result;
-            orders = await OrderService.GetOrdersAsync();
-        }
-        else
-        {
-            Console.WriteLine("Failed to update external order status: " + orderId);
-        }
-    }
-
-    private bool IsProcessButtonActive => selectedOrder?.Status == 1 || selectedOrder?.Status == 2;
-    private bool IsDownloadCodesButtonActive => selectedOrder?.Content is null && (selectedOrder?.Status == 4 || selectedOrder?.Status == 5);
-    private bool IsDownloadContentButtonActive => selectedOrder?.Content is not null;
 
     private async Task ProcessOrder()
     {
@@ -260,11 +279,19 @@
             isProcessing = false;
             await Task.Delay(1000);
             await UpdateExternalOrderStatus(selectedOrder.Id);
-            selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
+            selectedOrderInfo = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
             orders = await OrderService.GetOrdersAsync();
         }
     }
 
+
+    private async Task DownloadFileAsync(string fileName, byte[] content)
+    {
+        var fileStream = new System.IO.MemoryStream(content);
+        using var streamRef = new DotNetStreamReference(fileStream);
+
+        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+    }
     private async Task DownloadCodes()
     {
         if (selectedOrder != null)
@@ -275,11 +302,10 @@
             isDownloadingCodes = false;
             await Task.Delay(1000);
             await UpdateExternalOrderStatus(selectedOrder.Id);
-            selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
+            selectedOrderInfo = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
             orders = await OrderService.GetOrdersAsync();
         }
     }
-
     private async Task DownloadOrderContent()
     {
         if (selectedOrder != null)
@@ -299,26 +325,35 @@
         }
     }
 
-    private async Task DownloadFileAsync(string fileName, byte[] content)
+    private void ShowCreateOrderModal() 
     {
-        var fileStream = new System.IO.MemoryStream(content);
-        using var streamRef = new DotNetStreamReference(fileStream);
-
-        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+        showCreateOrderModal = true;
     }
-
-    private void ShowCreateOrderModal() => showCreateOrderModal = true;
-
     private void CloseCreateOrderModal()
     {
         showCreateOrderModal = false;
         gtinInput = string.Empty;
         filteredProducts = null;
         newOrderForm = new OrderCreateForm();
+        validationMessage = string.Empty;
     }
+
 
     private async Task CreateOrder()
     {
+        validationMessage = string.Empty;
+
+        if (selectedType != "Mastercase" && (string.IsNullOrEmpty(gtinInput) || newOrderForm.ProductId == 0 ))
+        {
+            validationMessage = "Please select a valid GTIN from the list.";
+            return;
+        }
+        if (newOrderForm.CodesCount <= 0)
+        {
+            validationMessage = "Code count must be greater than zero.";
+            return;
+        }
+
         try
         {
             var result = await OrderService.CreateOrderAsync(newOrderForm);
@@ -329,14 +364,14 @@
             }
             else
             {
-                Console.WriteLine("Failed to create order.");
+                validationMessage = "Failed to create order.";
                 showCreateOrderModal = false;
                 orders = await OrderService.GetOrdersAsync();
             }
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error creating order: {ex.Message}");
+            validationMessage = $"Error creating order: {ex.Message}";
             showCreateOrderModal = false;
             orders = await OrderService.GetOrdersAsync();
         }
@@ -345,12 +380,24 @@
     private void OnGtinInput(ChangeEventArgs e)
     {
         gtinInput = e.Value?.ToString() ?? string.Empty;
-        
+        showGtinDropdown = true;
         filteredProducts = !string.IsNullOrEmpty(gtinInput)
-            ? products?.Where(p => p.Gtin.Contains(gtinInput, StringComparison.OrdinalIgnoreCase)).Where(p => selectedType == "Pack" ? p.Type == 0 : p.Type == 1).Take(5)
-            : null;
+            ? products?
+                .Where(p => p.Gtin.Contains(gtinInput, StringComparison.OrdinalIgnoreCase))
+                .Where(p => selectedType == "Pack" ? p.Type == 0 : p.Type == 1)
+              .Take(5)
+            : products?
+                .Where(p => selectedType == "Pack" ? p.Type == 0 : p.Type == 1)
+              .Take(5);
+        var p = filteredProducts?.Where(x => x.Gtin == gtinInput).FirstOrDefault();
+        if (p != null)
+            OnGtinSelected(p);
+        else
+        {
+            newOrderForm.ProductId = 0;
+            newOrderForm.ProductUuid = Guid.Empty;
+        }
     }
-
     private void OnGtinSelected(Product product)
     {
         gtinInput = product.Gtin;
@@ -358,8 +405,22 @@
         newOrderForm.ProductUuid = product.ExternalUid;
         newOrderForm.Type = (sbyte)product.Type;
         filteredProducts = null;
-        selectedType = "Pack";
+        showGtinDropdown = false;
     }
+    private void ShowGtinDropdown()
+    {
+        showGtinDropdown = true;
+        OnGtinInput(new ChangeEventArgs { Value = gtinInput });
+    }
+    private async Task HideGtinDropdown()
+    {
+        await Task.Delay(200);
+        if (!isMouseOverDropdown)
+        {
+            showGtinDropdown = false;
+        }
+    }
+
 
     private string GetProductTypeString(int type)
     {
@@ -375,6 +436,7 @@
     {
         return type switch
         {
+            -4 => "Archived",
             -3 => "External Failed",
             -2 => "External Saved_error",
             -1 => "Sending error",
@@ -386,6 +448,10 @@
             5 => "Done",
             _ => "Unknown"
         };
+    }
+    public string LTime(DateTimeOffset time)
+    {
+        return time.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss");
     }
 
 }

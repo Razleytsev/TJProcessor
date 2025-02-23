@@ -20,47 +20,61 @@ namespace TJConnector.StateSystem.Services.Implementation
         }
         public async Task<CustomResult<List<PackageContent>>> GetContainerContent(string containerId)
         {
-            using var connection = _connectionFactory.Create();
+            try
             {
-                string sqlQuery = LoadSQLStatement("ContainerContentQuery.sql");
-                var contentResults = await connection.QueryAsync<ContainerContent>(sqlQuery, new { Code = containerId });
+                using var connection = _connectionFactory.Create();
+                {
+                    string sqlQuery = LoadSQLStatement("ContainerContentQuery.sql");
+                    var contentResults = await connection.QueryAsync<ContainerContent>(sqlQuery, new { Code = containerId });
 
-                if (contentResults == null)
-                    return new CustomResult<List<PackageContent>>
-                    { Success = false, Message = $"No information for mastercases {containerId}" };
+                    if (contentResults == null)
+                        return new CustomResult<List<PackageContent>>
+                        { Success = false, Message = $"No information for mastercases {containerId}" };
 
-                var result = contentResults
-                    .GroupBy(i => i.Bundle)
-                    .Select(g => new PackageContent
-                    {
-                        Bundle = g.Key,
-                        Packs = g.Select(i => i.Pack).ToArray()
-                    })
-                    .ToList();
+                    var result = contentResults
+                        .GroupBy(i => i.Bundle)
+                        .Select(g => new PackageContent
+                        {
+                            Bundle = g.Key,
+                            Packs = g.Select(i => i.Pack).ToArray()
+                        })
+                        .ToList();
 
-                return new CustomResult<List<PackageContent>> { Content = result, Success = false, Message = "OK" };
+                    return new CustomResult<List<PackageContent>> { Content = result, Success = true, Message = "OK" };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CustomResult<List<PackageContent>> { Success = false, Message = ex.Message };
             }
         }
 
         public async Task<CustomResult<DbContainerStatus>> GetContainerInfo(List<string> containerId)
         {
-            using var connection = _connectionFactory.Create();
+            try
             {
-                string sqlQuery = LoadSQLStatement("ContainerInfoQuery.sql");
-                var parameters = containerId
-                        .Select(x => new DbString
-                        {
-                            Value = x,
-                            IsAnsi = true
-                        });
-                var statusResult = 
-                    await connection.QueryAsync<ContainerStatus>(sqlQuery, new { Codes = parameters });
-                if (statusResult == null)
-                    return new CustomResult<DbContainerStatus> { Success = false, Message = $"Can't provide content for mastercase {containerId}" };
+                using var connection = _connectionFactory.Create();
+                {
+                    string sqlQuery = LoadSQLStatement("ContainerInfoQuery.sql");
+                    var parameters = containerId
+                            .Select(x => new DbString
+                            {
+                                Value = x,
+                                IsAnsi = true
+                            });
+                    var statusResult =
+                        await connection.QueryAsync<ContainerStatus>(sqlQuery, new { Codes = parameters });
+                    if (statusResult == null)
+                        return new CustomResult<DbContainerStatus> { Success = false, Message = $"Can't provide content for mastercase {containerId}" };
 
-                var result = new DbContainerStatus() { Content = statusResult.ToList() };
+                    var result = new DbContainerStatus() { Content = statusResult.ToList() };
 
-                return new CustomResult<DbContainerStatus> { Content = result, Success = false, Message = "OK" };
+                    return new CustomResult<DbContainerStatus> { Content = result, Success = false, Message = "OK" };
+                }
+            }
+            catch (Exception ex)
+            {
+                return new CustomResult<DbContainerStatus> { Success = false, Message = ex.Message };
             }
         }
 
@@ -71,8 +85,8 @@ namespace TJConnector.StateSystem.Services.Implementation
 
             if (!File.Exists(filePath))
             {
-                sqlStatement = $"--placeholder. put here your query. for {statementName}\nSELECT * FROM Table;"; 
-                File.WriteAllText(filePath, sqlStatement); 
+                sqlStatement = $"--placeholder. put here your query. for {statementName}\nSELECT * FROM Table;";
+                File.WriteAllText(filePath, sqlStatement);
             }
             else
             {

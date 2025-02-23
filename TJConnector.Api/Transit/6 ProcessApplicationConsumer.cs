@@ -7,20 +7,20 @@ using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Transit;
 
-public class ProcessApplicationConsumer : IConsumer<ProcessApplicationRequest6>
+public class StateProcessApplication : IConsumer<StateApplicationProcessBody6>
 {
     private readonly IExternalEmission _emissionService;
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<ProcessApplicationConsumer> _logger;
+    private readonly ILogger<StateProcessApplication> _logger;
 
-    public ProcessApplicationConsumer(IExternalEmission emissionService, ApplicationDbContext externalDb, ILogger<ProcessApplicationConsumer> logger)
+    public StateProcessApplication(IExternalEmission emissionService, ApplicationDbContext externalDb, ILogger<StateProcessApplication> logger)
     {
         _emissionService = emissionService;
         _context = externalDb;
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<ProcessApplicationRequest6> container)
+    public async Task Consume(ConsumeContext<StateApplicationProcessBody6> container)
     {
         var package = container.Message.Container;
 
@@ -55,6 +55,6 @@ public class ProcessApplicationConsumer : IConsumer<ProcessApplicationRequest6>
         await _context.SaveChangesAsync();
 
         await Task.Delay(1000);
-        await container.Publish(new ProcessAggregationStatus5 { Container = package });
+        await container.Publish(new StateApplicationStatusBody5 { Container = package });
     }
 }

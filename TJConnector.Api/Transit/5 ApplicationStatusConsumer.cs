@@ -9,25 +9,25 @@ using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Transit;
 
-public class ApplicationStatusConsumer : IConsumer<ProcessAggregationStatus5>
+public class StateApplicationStatus : IConsumer<StateApplicationStatusBody5>
 {
     private readonly IExternalEmission _emissionService;
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<ApplicationStatusConsumer> _logger;
+    private readonly ILogger<StateApplicationStatus> _logger;
 
-    public ApplicationStatusConsumer(IExternalEmission emissionService, ApplicationDbContext externalDb, ILogger<ApplicationStatusConsumer> logger)
+    public StateApplicationStatus(IExternalEmission emissionService, ApplicationDbContext externalDb, ILogger<StateApplicationStatus> logger)
     {
         _emissionService = emissionService;
         _context = externalDb;
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<ProcessAggregationStatus5> container)
+    public async Task Consume(ConsumeContext<StateApplicationStatusBody5> container)
     {
         var package = container.Message.Container;
         var statusList = await _emissionService.GetCodeApplicationInfo(package.ContentApplicationGuid ?? Guid.Empty);
 
-        _logger.LogWarning($"APPLICATIONSTATUSCONSUMER{package.SSCCCode}");
+        _logger.LogTrace($"APPLICATIONSTATUSCONSUMER{package.SSCCCode}");
         var status = statusList.Content;
 
         if (status == null)
@@ -53,7 +53,7 @@ public class ApplicationStatusConsumer : IConsumer<ProcessAggregationStatus5>
                 package.AddStatus(6);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await container.Publish(new ProcessApplicationRequest6 { Container = package });
+                await container.Publish(new StateApplicationProcessBody6 { Container = package });
                 return;
             case 2:
                 package.Status = -5;
@@ -63,12 +63,13 @@ public class ApplicationStatusConsumer : IConsumer<ProcessAggregationStatus5>
                 await _context.SaveChangesAsync();
                 return;
             case 3:
+                int r = container.Message.RetryCount++;
                 package.Status = 5;
                 package.Comment = "Processing in TJ state system";
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await Task.Delay(5000);
-                await container.Publish(new ProcessAggregationStatus5 { Container = package });
+                await Task.Delay(r < 10 ? r * 6000 : 60000);
+                await container.Publish(new StateApplicationStatusBody5 { Container = package, RetryCount = r });
                 return;
             case 4:
                 package.Status = -6;
@@ -82,7 +83,7 @@ public class ApplicationStatusConsumer : IConsumer<ProcessAggregationStatus5>
                 package.AddStatus(8);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await container.Publish(new ProcessContainerAggregation7 { Container = package });
+                await container.Publish(new StateCreateAggregationBody7 { Container = package });
                 return;
         }
 

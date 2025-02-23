@@ -15,3 +15,12 @@
 }
 
 window.readFileContent = readFileContent;
+
+window.hideDropdownOnClickOutside = (elementId, dotnetHelper) => {
+    document.addEventListener('click', function (event) {
+        const inputElement = document.getElementById(elementId);
+        if (inputElement && !inputElement.contains(event.target)) {
+            dotnetHelper.invokeMethodAsync('HideGtinDropdown');
+        }
+    });
+};

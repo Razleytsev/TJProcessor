@@ -5,20 +5,20 @@ using TJConnector.Postgres;
 using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Transit;
-public class AggregationStatusConsumer : IConsumer<ProcessAggregationDocumentStatus8>
+public class StateAggregationStatus : IConsumer<StateAggregationStatusBody8>
 
 {
     private readonly IExternalContainer _containerService;
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<AggregationStatusConsumer> _logger;   
-    public AggregationStatusConsumer(IExternalContainer containerService, ApplicationDbContext externalDb, ILogger<AggregationStatusConsumer> logger)
+    private readonly ILogger<StateAggregationStatus> _logger;   
+    public StateAggregationStatus(IExternalContainer containerService, ApplicationDbContext externalDb, ILogger<StateAggregationStatus> logger)
     {
         _containerService = containerService;
         _context = externalDb;
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<ProcessAggregationDocumentStatus8> container)
+    public async Task Consume(ConsumeContext<StateAggregationStatusBody8> container)
     {
         var package = container.Message.Container;
         var statusList = await _containerService.ContainerOperationCheck(package.AggregationGuid.Value);
@@ -49,7 +49,7 @@ public class AggregationStatusConsumer : IConsumer<ProcessAggregationDocumentSta
                 package.AddStatus(10);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await container.Publish(new ProcessAggregationDocument9 { Container = package });
+                await container.Publish(new StateProcessAggregationBody9 { Container = package });
                 return;
             case 2:
                 package.Status = -10;
@@ -59,12 +59,13 @@ public class AggregationStatusConsumer : IConsumer<ProcessAggregationDocumentSta
                 await _context.SaveChangesAsync();
                 return;
             case 3:
+                int r = container.Message.RetryCount++;
                 package.Status = 11;
                 package.Comment = "Processing in TJ state system";
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
-                await Task.Delay(5000);
-                await container.Publish(new ProcessAggregationDocumentStatus8 { Container = package });
+                await Task.Delay(r < 10 ? r * 6000 : 60000);
+                await container.Publish(new StateAggregationStatusBody8 { Container = package, RetryCount = r });
                 return;
             case 4:
                 package.Status = -11;
