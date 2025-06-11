@@ -31,7 +31,12 @@
                 <p><strong>Gtin:</strong> @selectedBatch.ProductGtin</p>
                 <p><strong>Created At:</strong> @selectedBatch.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</p>
                 <p><strong>Requested Codes:</strong> @selectedBatch.RequestedCodes</p>
-                <p><strong>Downloaded Codes:</strong> @selectedBatch.DownloadedCodes</p>
+                <p>
+                    <strong>Downloaded Codes:</strong>
+                    <span class="@(selectedBatch.Status == "Completed" && selectedBatch.RequestedCodes != selectedBatch.DownloadedCodes ? "text-danger" : "")">
+                        @selectedBatch.DownloadedCodes
+                    </span>
+                </p>
             </div>
             <h5>Status History</h5>
             <table class="table table-borderless">
@@ -53,7 +58,9 @@
                                 <td>@order.ExternalGuid</td>
                                 <td>@order.Status</td>
                                 <td>@order.RequestedCodes</td>
-                                <td>@order.DownloadedCodes</td>
+                                <td class="@(selectedBatch.Status == "Completed" && order.RequestedCodes != order.DownloadedCodes ? "text-danger" : "")">
+                                    @order.DownloadedCodes
+                                </td>
                                 <td>@order.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
                             </tr>
                         }
