@@ -67,7 +67,7 @@ h1:focus {
 }
 
 .details-container {
-    flex: 4; 
+    flex: 1; 
     padding: 10px;
     border-right: 1px solid #ddd; 
     position: sticky;
@@ -79,7 +79,7 @@ h1:focus {
 }
 
 .table-container {
-    flex: 6;
+    flex: 3;
     overflow: hidden;
     display: flex;
     flex-direction: column;

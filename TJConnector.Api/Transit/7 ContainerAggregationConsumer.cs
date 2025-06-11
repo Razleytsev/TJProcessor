@@ -9,19 +9,19 @@ using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Transit;
 
-public class ContainerAggregationConsumer : IConsumer<ProcessContainerAggregation7>
+public class StateCreateAggregation : IConsumer<StateCreateAggregationBody7>
 {
     private readonly IExternalContainer _containerService;
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<ContainerAggregationConsumer> _logger;
-    public ContainerAggregationConsumer(IExternalContainer containerService, ApplicationDbContext externalDb, ILogger<ContainerAggregationConsumer> logger)
+    private readonly ILogger<StateCreateAggregation> _logger;
+    public StateCreateAggregation(IExternalContainer containerService, ApplicationDbContext externalDb, ILogger<StateCreateAggregation> logger)
     {
         _containerService = containerService;
         _context = externalDb;
         _logger = logger;
     }
 
-    public async Task Consume(ConsumeContext<ProcessContainerAggregation7> container)
+    public async Task Consume(ConsumeContext<StateCreateAggregationBody7> container)
     {
         var package = container.Message.Container;
 
@@ -75,7 +75,7 @@ public class ContainerAggregationConsumer : IConsumer<ProcessContainerAggregatio
 
         await Task.Delay(1000);
 
-        await container.Publish(new ProcessAggregationDocumentStatus8 { Container = package });
+        await container.Publish(new StateAggregationStatusBody8 { Container = package });
 
     }
 }

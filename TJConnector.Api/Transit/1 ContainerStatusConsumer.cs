@@ -8,20 +8,20 @@ using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Transit;
-public class ContainerStatusConsumer : IConsumer<ProcessContainerStatus1>
+public class StateCheckSSCC : IConsumer<StateCheckSSCCBody1>
 {
     private readonly IExternalContainer _containerService;
     private readonly ApplicationDbContext _context;
-    private readonly ILogger<ContainerStatusConsumer> _logger;
+    private readonly ILogger<StateCheckSSCC> _logger;
 
-    public ContainerStatusConsumer(IExternalContainer containerService, ApplicationDbContext context, ILogger<ContainerStatusConsumer> logger)
+    public StateCheckSSCC(IExternalContainer containerService, ApplicationDbContext context, ILogger<StateCheckSSCC> logger)
     {
         _containerService = containerService;
         _context = context;
         _logger = logger;   
     }
 
-    public async Task Consume(ConsumeContext<ProcessContainerStatus1> message)
+    public async Task Consume(ConsumeContext<StateCheckSSCCBody1> message)
     {
         var containers = message.Message.Containers;
 
@@ -70,7 +70,7 @@ public class ContainerStatusConsumer : IConsumer<ProcessContainerStatus1>
 
                 await Task.Delay(500);
 
-                await message.Publish(new ProcessExternalDbStatus2 { Container = package });
+                await message.Publish(new ExternalDbBody2 { Container = package });
             }
         }
     }

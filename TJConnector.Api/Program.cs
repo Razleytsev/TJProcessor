@@ -65,15 +65,15 @@ builder.Services.AddMassTransit(cfg =>
         config.ConfigureEndpoints(context);
     });
 
-    cfg.AddConsumer<ContainerStatusConsumer>();
-    cfg.AddConsumer<ExternalDbStatusConsumer>();
-    cfg.AddConsumer<ExternalDbContentConsumer>();
-    cfg.AddConsumer<EmissionServiceConsumer>();
-    cfg.AddConsumer<ApplicationStatusConsumer>();
-    cfg.AddConsumer<ProcessApplicationConsumer>();
-    cfg.AddConsumer<ContainerAggregationConsumer>();
-    cfg.AddConsumer<AggregationStatusConsumer>();
-    cfg.AddConsumer<ProcessAggregationConsumer>();
+    cfg.AddConsumer<StateCheckSSCC>();
+    cfg.AddConsumer<ExternalDbCheck>();
+    cfg.AddConsumer<ExternalDbContent>();
+    cfg.AddConsumer<StateCreateApplication>();
+    cfg.AddConsumer<StateApplicationStatus>();
+    cfg.AddConsumer<StateProcessApplication>();
+    cfg.AddConsumer<StateCreateAggregation>();
+    cfg.AddConsumer<StateAggregationStatus>();
+    cfg.AddConsumer<StateProcessAggregation>();
     cfg.AddConsumer<ReprocessConsumer>();
     cfg.AddConsumer<BatchInitialConsumer>();
     cfg.AddConsumer<CreateOrdersConsumer>();

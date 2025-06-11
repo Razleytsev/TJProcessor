@@ -4,45 +4,47 @@ using TJConnector.Postgres.Entities;
 
 namespace TJConnector.Api.Hubs;
 
-public class ProcessContainerStatus1
+public class StateCheckSSCCBody1
 {
     public List<Package> Containers { get; set; }
 }
 
-public class ProcessExternalDbStatus2
+public class ExternalDbBody2
 {
     public Package Container { get; set; }
 }
 
-public class ProcessExternalDbContent3
+public class ExternalDbContentBody3
 {
     public Package Container { get; set; }
 }
 
-public class ProcessEmissionService4
+public class StateCreateApplicationBody4
 {
     public Package Container { get; set; }
 }
 
-public class ProcessAggregationStatus5
+public class StateApplicationStatusBody5
+{
+    public Package Container { get; set; }
+    public int RetryCount { get; set; } = 0;
+}
+
+public class StateApplicationProcessBody6
 {
     public Package Container { get; set; }
 }
 
-public class ProcessApplicationRequest6
+public class StateCreateAggregationBody7
 {
     public Package Container { get; set; }
 }
-
-public class ProcessContainerAggregation7
+public class StateAggregationStatusBody8
 {
     public Package Container { get; set; }
+    public int RetryCount { get; set; } = 0;
 }
-public class ProcessAggregationDocumentStatus8
-{
-    public Package Container { get; set; }
-}
-public class ProcessAggregationDocument9
+public class StateProcessAggregationBody9
 {
     public Package Container { get; set; }
 }

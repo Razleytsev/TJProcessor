@@ -8,7 +8,7 @@
 <button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowProcessCodeModal">Download codes</button>
 
 <div class="container">
-    <div class="table-container" style="font-size: 12px;">
+    <div class="table-container" style="flex: 6; font-size: 12px;">
         @if (packageRequests == null)
         {
             <p>Loading...</p>
@@ -18,15 +18,14 @@
             <CustomTable Items="packageRequests" Columns="columns" OnRowClick="EventCallback.Factory.Create<PackageRequest>(this, OnPackageRequestClick)" SelectedItem="selectedPackageRequest" />
         }
     </div>
-    <div class="details-container" style="font-size: 12px;">
-        @if (selectedPackageRequest != null)
+    <div class="details-container" style="flex: 4; font-size: 12px;">
+        @if (selectedPackageRequestInfo != null)
         {
             <h4>Package Request Information</h4>
             <div>
-                <p><strong>Filename:</strong> @selectedPackageRequest.Filename</p>
-                <p><strong>User:</strong> @selectedPackageRequest.User</p>
-                <p><strong>Status:</strong> @selectedPackageRequest.Status</p>
-                <p><strong>Record Date:</strong> @selectedPackageRequest.RecordDate</p>
+                <p><strong>Filename:</strong> @selectedPackageRequestInfo.Filename</p>
+                @* <p><strong>Status:</strong> @selectedPackageRequestInfo.Status</p> *@
+                <p><strong>Record Date:</strong> @LTime(selectedPackageRequestInfo.RecordDate)</p>
             </div>
             <h5>Packages</h5>
             <div class="packages-table-container" style="height: 30%; overflow-y: auto;">
@@ -39,7 +38,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var package in selectedPackageRequest.Packages ?? new List<Package>())
+                        @foreach (var package in selectedPackageRequestInfo.Packages ?? new List<Package>())
                         {
                             <tr @onclick="() => OnPackageClick(package)" class="@(selectedPackage?.Id == package.Id ? "highlighted-row" : "")">
                                 <td>@package.Code</td>
@@ -81,6 +80,7 @@
 </div>
 
 
+
 @if (showProcessCodeModal)
 {
     <div class="modal" style="display: block; font-size: 12px;">
@@ -108,8 +108,8 @@
                                     @foreach (var package in packageCouples)
                                     {
                                         <tr class="@(package.IsValid ? "" : "table-danger")">
-                                            <td style=" word-break: break-word;overflow-wrap: break-word; width:50%;">@package.Code</td>
-                                            <td style=" word-break: break-word;overflow-wrap: break-word; width:50%;">@package.SSCCCode</td>
+                                            <td style=" word-break: break-word;overflow-wrap: break-word; width:auto;">@package.Code</td>
+                                            <td style=" word-break: break-word;overflow-wrap: break-word; width:auto;">@package.SSCCCode</td>
                                         </tr>
                                     }
                                 </tbody>
@@ -134,6 +134,7 @@
     private IEnumerable<PackageRequest>? packageRequests;
     private List<CustomTable<PackageRequest>.ColumnDefinition<PackageRequest>> columns = new();
     private PackageRequest? selectedPackageRequest;
+    private PackageRequest? selectedPackageRequestInfo;
     private Package? selectedPackage;
     private bool showStatusHistoryTooltip = false;
     private StatusHistory[] statusHistoryForTooltip = new StatusHistory[0];
@@ -152,15 +153,15 @@
         {
             new() { Header = "ID", Value = pr => pr.Id },
             new() { Header = "Filename", Value = pr => pr.Filename ?? "N/A" },
-            new() { Header = "User", Value = pr => pr.User ?? "N/A" },
-            new() { Header = "Status", Value = pr => pr.Status },
-            new() { Header = "Record Date", Value = pr => pr.RecordDate.ToString("yyyy-MM-dd HH:mm:ss") }
+            //new() { Header = "Status", Value = pr => pr.Status },
+            new() { Header = "Record Date", Value = pr => LTime(pr.RecordDate) }
         };
     }
 
     private async Task OnPackageRequestClick(PackageRequest packageRequest)
     {
-        selectedPackageRequest = await RequestService.GetPackageRequestByIdAsync(packageRequest.Id);
+        selectedPackageRequest = packageRequest;
+        selectedPackageRequestInfo = await RequestService.GetPackageRequestByIdAsync(packageRequest.Id);
         selectedPackage = null;
     }
 
@@ -182,7 +183,7 @@
 
     private async Task ReprocessPackage()
     {
-        if (selectedPackage != null)
+        if (selectedPackage != null && selectedPackageRequest != null)
         {
             await RequestService.ReprocessPackage(selectedPackage.Id);
             selectedPackageRequest = await RequestService.GetPackageRequestByIdAsync(selectedPackageRequest.Id);
@@ -255,7 +256,7 @@
     {
         return type switch
         {
-            -12 => "Aggreagation: Unknown status",
+            -12 => "Aggregation: Unknown status",
             -11 => "Aggregation: Failed",
             -10 => "Aggregation: Bad external status",
             -9 => "Aggregation: Process error",
@@ -263,7 +264,7 @@
             -7 => "Application: Process error",
             -6 => "Application: Failed",
             -5 => "Application: Bad external status",
-            -4 => "Application: Fail to sent",
+            -4 => "Application: Sending error",
             -3 => "External DB: No content",
             -2 => "External DB: Not found",
             -1 => "CisInfo: NOK",
@@ -282,5 +283,9 @@
             12 => "Reported",
             _ => "Unknown"
         };
+    }
+    private string LTime(DateTimeOffset time)
+    {
+        return time.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss");
     }
 }

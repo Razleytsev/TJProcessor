@@ -46,7 +46,7 @@ public class OrderController : ControllerBase
         return order;
     }
 
-    [HttpGet("external/{id}")]
+    [HttpGet("external/{id}")] 
     public async Task<ActionResult<CodeOrder>> GetExternalOrderById(int id)
     {
         var order = await _orderService.GetExternalOrderByIdAsync(id);

@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using TJConnector.Api.Hubs;
 using TJConnector.Postgres;
+using TJConnector.Postgres.Entities;
 using TJConnector.StateSystem.Services.Contracts;
 
 namespace TJConnector.Api.Transit;
@@ -23,21 +24,21 @@ public class ReprocessConsumer : IConsumer<ReprocessContainer0>
     {
         var package = container.Message.Container;
 
-        _logger.LogWarning($"Reprocessing {package.Code} {package.SSCCCode} with status {package.Status}");
+        _logger.LogTrace($"Reprocessing {package.Code} {package.SSCCCode} with status {package.Status}");
 
         if(package.Content == null)
         {
-            await container.Publish(new ProcessExternalDbStatus2 { Container = package });
+            await container.Publish(new StateCheckSSCCBody1 { Containers = new List<Package> { package } });
             return;
         }
-        if (package.AggregationGuid != null)
+        if (package.ContentApplicationGuid == null)
         {
-            await container.Publish(new ProcessAggregationDocumentStatus8 { Container = package });
+            await container.Publish(new StateCreateApplicationBody4 { Container = package });
             return;
         }
-        if (package.ContentApplicationGuid != null)
+        if (package.AggregationGuid == null)
         {
-            await container.Publish(new ProcessAggregationStatus5 { Container = package });
+            await container.Publish(new StateCreateAggregationBody7 { Container = package });
             return;
         }
     }
