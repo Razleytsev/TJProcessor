@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+	<ErrorOnDuplicatePublishOutputFiles>false</ErrorOnDuplicatePublishOutputFiles>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SharedLibrary\TJConnector.SharedLibrary.csproj" />
+    <ProjectReference Include="..\TJConnector.Api\TJConnector.Api.csproj" />
     <ProjectReference Include="..\TJConnector.Postgres\TJConnector.Postgres.csproj" />
     <ProjectReference Include="..\TJConnector.StateSystem\TJConnector.StateSystem.csproj" />
   </ItemGroup>

@@ -29,8 +29,9 @@
                 <p><strong>Type:</strong> @selectedBatch.Type</p>
                 <p><strong>Status:</strong> @selectedBatch.Status</p>
                 <p><strong>Gtin:</strong> @selectedBatch.ProductGtin</p>
-                <p><strong>Created At:</strong> @selectedBatch.RecordDate</p>
-                <p><strong>Count:</strong> @selectedBatch.RequestedCodes</p>
+                <p><strong>Created At:</strong> @selectedBatch.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</p>
+                <p><strong>Requested Codes:</strong> @selectedBatch.RequestedCodes</p>
+                <p><strong>Downloaded Codes:</strong> @selectedBatch.DownloadedCodes</p>
             </div>
             <h5>Status History</h5>
             <table class="table table-borderless">

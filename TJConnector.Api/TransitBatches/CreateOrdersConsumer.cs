@@ -27,7 +27,7 @@ public class CreateOrdersConsumer : IConsumer<CreateOrdersForBatch>
     {
         var batch = container.Message.Batch;
         int totalCount = batch.Count;
-        int maxPerOrder = 2;
+        int maxPerOrder = 10000;
         int createdOrders = 0;
 
         var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == batch.ProductId);

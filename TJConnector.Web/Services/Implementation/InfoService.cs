@@ -1,4 +1,5 @@
-﻿using TJConnector.Postgres.Entities;
+﻿using TJConnector.Api.Services;
+using TJConnector.Postgres.Entities;
 using TJConnector.StateSystem.Model.ExternalResponses.Container;
 using TJConnector.StateSystem.Model.ExternalResponses.Generic;
 using TJConnector.Web.Services.Contracts;
@@ -8,8 +9,8 @@ namespace TJConnector.Web.Services.Implementation
     public class InfoService : IInfoService
     {
         private readonly HttpClient _httpClient;
-        private readonly ILogger<OrderService> _logger;
-        public InfoService(HttpClient httpClient, ILogger<OrderService> logger)
+        private readonly ILogger<InfoService> _logger;
+        public InfoService(HttpClient httpClient, ILogger<InfoService> logger)
         {
             _httpClient = httpClient;
             _logger = logger;

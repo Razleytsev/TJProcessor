@@ -102,7 +102,7 @@ public static class BatchDTOExtensions
     {
         0 => "Pack",
         1 => "Bundle",
-        2 => "Mastercase",
+        3 => "Mastercase",
         _ => "Unknown"
     };
 
@@ -124,7 +124,7 @@ public static class BatchDTOExtensions
     {
         0 => "Pack",
         1 => "Bundle",
-        2 => "Mastercase",
+        3 => "Mastercase",
         _ => "Unknown"
     };
 }

@@ -7,7 +7,7 @@
 
 <h3>External Orders</h3>
 
-<button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowCreateOrderModal">Create New Order</button>
+@* <button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowCreateOrderModal">Create New Order</button> *@
 
 <div class="container">
     <div class="table-container" style="font-size: 12px;">
@@ -207,7 +207,8 @@
             new() { Header = "Created At", Value = o => LTime(o.RecordDate) },
             new() { Header = "Status", Value = o => GetStatusTypeString(o.Status) },
             new() { Header = "Description", Value = o => o.Description },
-            new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
+            new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" },
+            new() { Header = "Batch ID", Value = o => o.BatchId?.ToString() ?? "N/A" }
         };
     }
     private async Task OnOrderClick(CodeOrder order)
