@@ -2,13 +2,12 @@
 using Microsoft.EntityFrameworkCore;
 using TJConnector.Postgres.Entities;
 using Newtonsoft.Json;
-using System.Reflection.Emit;
 
 namespace TJConnector.Postgres.Configurations;
 
-internal sealed class CodeOrderConfiguration : IEntityTypeConfiguration<CodeOrder>
+internal sealed class BatchConfiguration : IEntityTypeConfiguration<Batch>
 {
-    public void Configure(EntityTypeBuilder<CodeOrder> builder)
+    public void Configure(EntityTypeBuilder<Batch> builder)
     {
         builder.HasKey(o => o.Id);
         builder.Property(o => o.StatusHistoryJson)
@@ -20,5 +19,9 @@ internal sealed class CodeOrderConfiguration : IEntityTypeConfiguration<CodeOrde
         builder.Property(o => o.RecordDate).HasDefaultValueSql("NOW()");
         builder.Property(o => o.User).HasMaxLength(20);
         builder.Property(o => o.Description).HasMaxLength(100);
+        //builder.HasMany(b => b.CodeOrders)
+        //    .WithOne(b => b.Batch)
+        //    .HasForeignKey(b => b.BatchId)
+        //    .IsRequired(false);
     }
 }

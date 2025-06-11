@@ -46,6 +46,14 @@
     {
         try
         {
+            var updateExternal = await ProductService.GetExternalProductsAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching external products: {ex.Message}");
+        }
+        try
+        {
             products = await ProductService.GetProductsAsync();
             columns = new()
             {

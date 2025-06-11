@@ -9,12 +9,12 @@ using TJConnector.Web.Services.Contracts;
 
 namespace TJConnector.Web.Services.Implementation;
 
-public class OrderService : IOrderService
+public class OrderServiceWeb : IOrderService
 {
     private readonly HttpClient _httpClient;
-    private readonly ILogger<OrderService> _logger;
+    private readonly ILogger<OrderServiceWeb> _logger;
 
-    public OrderService(HttpClient httpClient, ILogger<OrderService> logger)
+    public OrderServiceWeb(HttpClient httpClient, ILogger<OrderServiceWeb> logger)
     {
         _httpClient = httpClient;
         _logger = logger;

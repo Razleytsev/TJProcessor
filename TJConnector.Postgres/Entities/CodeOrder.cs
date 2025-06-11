@@ -18,6 +18,8 @@
         public string? StatusMessage { get; set; }
 
         public CodeOrderContent? Content { get; set; }
+
+        public int? BatchId { get; set; }
     }
     public class StatusHistory
     {

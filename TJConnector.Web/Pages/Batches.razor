@@ -1,64 +1,76 @@
-﻿@page "/emission"
+﻿@page "/batches"
 @using TJConnector.SharedLibrary.DTOs.Forms
-@inject IOrderService OrderService
+@using TJConnector.SharedLibrary.Models
+@inject IBatchServiceWeb BatchService
 @inject IProductService ProductService
 @inject IMetadataService MetadataService
 @inject IJSRuntime JSRuntime
 
-<h3>External Orders</h3>
+<h3>Order Batches</h3>
 
 <button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowCreateOrderModal">Create New Order</button>
 
 <div class="container">
     <div class="table-container" style="width: 75%;font-size: 12px;">
-        @if (orders == null)
+        @if (batches == null)
         {
             <p>Loading...</p>
         }
         else
         {
-            <CustomTable Items="orders" Columns="columns" OnRowClick="EventCallback.Factory.Create<CodeOrder>(this, OnOrderClick)" SelectedItem="selectedOrder" />
+            <CustomTable Items="batches" Columns="columns" OnRowClick="EventCallback.Factory.Create<Batch>(this, OnBatchClick)" SelectedItem="selectedBatchToHigh" />
         }
     </div>
     <div class="details-container" style="width: 25%;font-size: 12px;">
-        @if (selectedOrder != null)
+        @if (selectedBatch != null)
         {
             <h4>Order Information</h4>
             <div>
-                <p><strong>Type:</strong> @GetProductTypeString(selectedOrder.Type)</p>
-                <p><strong>Status:</strong> @GetStatusTypeString(selectedOrder.Status)</p>
-                <p><strong>Gtin:</strong> @selectedOrder.Product?.Gtin</p>
-                <p><strong>Created At:</strong> @selectedOrder.RecordDate</p>
-                <p><strong>Count:</strong> @selectedOrder.Count</p>
-                <p><strong>External GUID:</strong> @selectedOrder.ExternalGuid</p>
+                <p><strong>Type:</strong> @selectedBatch.Type</p>
+                <p><strong>Status:</strong> @selectedBatch.Status</p>
+                <p><strong>Gtin:</strong> @selectedBatch.ProductGtin</p>
+                <p><strong>Created At:</strong> @selectedBatch.RecordDate</p>
+                <p><strong>Count:</strong> @selectedBatch.RequestedCodes</p>
             </div>
             <h5>Status History</h5>
             <table class="table table-borderless">
                 <thead>
                     <tr>
+                        <th>GUID</th>
                         <th>Status</th>
+                        <th>Requested</th>
+                        <th>Downloaded</th>
                         <th>Date</th>
                     </tr>
                 </thead>
-                <tbody>
-                    @foreach (var history in selectedOrder.StatusHistoryJson)
-                    {
-                        <tr>
-                            <td>@GetStatusTypeString(history.Status)</td>
-                            <td>
-                                @history.StatusDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
-                            </td>
-                        </tr>
-                    }
-                </tbody>
+                @if (selectedBatch.Orders != null)
+                {
+                    <tbody>
+                        @foreach (var order in selectedBatch.Orders)
+                        {
+                            <tr>
+                                <td>@order.ExternalGuid</td>
+                                <td>@order.Status</td>
+                                <td>@order.RequestedCodes</td>
+                                <td>@order.DownloadedCodes</td>
+                                <td>@order.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            </tr>
+                        }
+                    </tbody>
+                }
             </table>
-            <button class="btn btn-secondary" @onclick="ProcessOrder" disabled="@(!IsProcessButtonActive || isProcessing)">Process Order</button>
-            <button class="btn btn-secondary" @onclick="DownloadCodes" disabled="@(!IsDownloadCodesButtonActive || isDownloadingCodes)">Pull Codes</button>
-            <button class="btn btn-secondary" @onclick="DownloadOrderContent" disabled="@(!IsDownloadContentButtonActive || isDownloadingContent)">Download</button>
+            @if (selectedBatch.Status == "Created" || selectedBatch.Status == "Processing")
+            {
+                <button class="btn btn-danger" @onclick="CancelBatch" disabled="@isProcessing">Cancel</button>
+            }
+            else if (selectedBatch.Status == "Completed")
+            {
+                <button class="btn btn-success" @onclick="DownloadBatchContent" disabled="@isDownloadingContent">Download</button>
+            }
         }
         else
         {
-            <p>Select an order to view details.</p>
+            <p>Select a batch to view details.</p>
         }
     </div>
 </div>
@@ -73,7 +85,7 @@
                     <button type="button" class="close" @onclick="CloseCreateOrderModal">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <form>                        
+                    <form>
                         <div class="form-group">
                             <label>Type</label>
                             <select class="form-control" @onchange="OnTypeChange">
@@ -113,30 +125,8 @@
                                 <input type="text" class="form-control" @bind="newOrderForm.ProductId" disabled />
                             </div>
                             <div class="form-group">
-                                <label>External UID</label>
-                                <input type="text" class="form-control" @bind="newOrderForm.ProductUuid" disabled />
-                            </div>
-                            <div class="form-group">
                                 <label>Type</label>
                                 <input type="text" class="form-control" @bind="newOrderForm.Type" disabled />
-                            </div>
-                            <div class="form-group">
-                                <label>Factory</label>
-                                <select class="form-control" @bind="newOrderForm.FactoryUuid">
-                                    @foreach (var factory in factories)
-                                    {
-                                        <option value="@factory.ExternalUid">@factory.Name</option>
-                                    }
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Marking Line</label>
-                                <select class="form-control" @bind="newOrderForm.MarkingLineUuid">
-                                    @foreach (var markingLine in markingLines)
-                                    {
-                                        <option value="@markingLine.ExternalUid">@markingLine.Name</option>
-                                    }
-                                </select>
                             </div>
                             <div class="form-group">
                                 <label>Codes Count</label>
@@ -156,22 +146,20 @@
             </div>
         </div>
     </div>
-}   
+}
 
 @code {
-    private IEnumerable<CodeOrder>? orders;
-    private List<CustomTable<CodeOrder>.ColumnDefinition<CodeOrder>> columns = new();
-    private CodeOrder? selectedOrder;
+    private IEnumerable<Batch>? batches;
+    private List<CustomTable<Batch>.ColumnDefinition<Batch>> columns = new();
+    private Batch? selectedBatchToHigh;
+    private BatchDTO? selectedBatch;
     private bool showCreateOrderModal = false;
-    private OrderCreateForm newOrderForm = new();
+    private BatchCreateForm newOrderForm = new();
     private IEnumerable<Product>? products;
-    private IEnumerable<Factory>? factories;
-    private IEnumerable<MarkingLine>? markingLines;
     private string gtinInput = string.Empty;
     private IEnumerable<Product>? filteredProducts = new List<Product>();
-    private bool isProcessing = false;
-    private bool isDownloadingCodes = false;
-    private bool isDownloadingContent = false;
+    private PeriodicTimer? _timer;
+    private CancellationTokenSource? _cts;
 
 
     private string? selectedType = "Pack";
@@ -183,35 +171,24 @@
         {
             newOrderForm.Type = 0;
             gtinInput = string.Empty;
-            if (factories is not null) newOrderForm.FactoryUuid = factories.First().ExternalUid;
-            if (markingLines is not null) newOrderForm.MarkingLineUuid = markingLines.First().ExternalUid;
         }
         else if (selectedType == "Bundle")
         {
-            newOrderForm.Type = 1; 
+            newOrderForm.Type = 1;
             gtinInput = string.Empty;
-            if (factories is not null) newOrderForm.FactoryUuid = factories.First().ExternalUid;
-            if (markingLines is not null) newOrderForm.MarkingLineUuid = markingLines.First().ExternalUid;
         }
         else if (selectedType == "Mastercase")
         {
             gtinInput = string.Empty;
             newOrderForm.Type = 3;
-            newOrderForm.ProductUuid = null;
-            newOrderForm.FactoryUuid = null;
-            newOrderForm.MarkingLineUuid = null;
         }
     }
 
     protected override async Task OnInitializedAsync()
     {
-        orders = await OrderService.GetOrdersAsync();
+        batches = await BatchService.GetBatchesAsync();
         products = await ProductService.GetProductsAsync();
-        factories = (await MetadataService.GetFactoriesAsync()).ToList();
-        markingLines = (await MetadataService.GetMarkingLinesAsync()).ToList();
 
-        if (factories.Any()) newOrderForm.FactoryUuid = factories.First().ExternalUid;
-        if (markingLines.Any()) newOrderForm.MarkingLineUuid = markingLines.First().ExternalUid;
 
         columns = new()
         {
@@ -221,24 +198,61 @@
             new() { Header = "Count", Value = o => o.Count },
             new() { Header = "Created At", Value = o => o.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") },
             new() { Header = "Status", Value = o => GetStatusTypeString(o.Status) },
-            new() { Header = "Description", Value = o => o.Description },
-            new() { Header = "External GUID", Value = o => o.ExternalGuid?.ToString() ?? "N/A" }
+            new() { Header = "Description", Value = o => o.Description }
         };
+        StartAutoUpdate();
     }
 
-    private async Task OnOrderClick(CodeOrder order)
+    private void StartAutoUpdate()
     {
-        await UpdateExternalOrderStatus(order.Id);
-        selectedOrder = await OrderService.GetOrderByIdAsync(order.Id);
+        _cts = new CancellationTokenSource();
+        _ = AutoUpdateLoop(_cts.Token);
+    }
+    private async Task AutoUpdateLoop(CancellationToken token)
+    {
+        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await _timer.WaitForNextTickAsync(token))
+            {
+                await InvokeAsync(LoadDataAsync);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+    private async Task LoadDataAsync()
+    {
+        batches = await BatchService.GetBatchesAsync();
+        if (selectedBatch != null)
+        {
+            selectedBatch = await BatchService.GetBatchByIdAsync(selectedBatch.Id);
+            selectedBatchToHigh = batches?.FirstOrDefault(b => b.Id == selectedBatch.Id);
+        }
+        StateHasChanged();
+    }
+
+    private async Task OnBatchClick(Batch batch)
+    {
+        //await UpdateExternalOrderStatus(batch.Id);
+        selectedBatch = await BatchService.GetBatchByIdAsync(batch.Id);
+        selectedBatchToHigh = batches?.FirstOrDefault(b => b.Id == selectedBatch.Id);
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _timer?.Dispose();
+        _cts?.Dispose();
     }
 
     private async Task UpdateExternalOrderStatus(int orderId)
     {
-        var result = await OrderService.GetExternalOrderByIdAsync(orderId);
+        var result = await BatchService.GetBatchByIdAsync(orderId);
         if (result is not null)
         {
-            selectedOrder = result;
-            orders = await OrderService.GetOrdersAsync();
+            selectedBatch = result;
         }
         else
         {
@@ -246,53 +260,32 @@
         }
     }
 
-    private bool IsProcessButtonActive => selectedOrder?.Status == 1 || selectedOrder?.Status == 2;
-    private bool IsDownloadCodesButtonActive => selectedOrder?.Content is null && (selectedOrder?.Status == 4 || selectedOrder?.Status == 5);
-    private bool IsDownloadContentButtonActive => selectedOrder?.Content is not null;
+    private bool isProcessing = false;
+    private bool isDownloadingContent = false;
 
-    private async Task ProcessOrder()
+    private async Task CancelBatch()
     {
-        if (selectedOrder != null)
+        if (selectedBatch != null)
         {
             isProcessing = true;
-            await OrderService.ProcessOrderAsync(selectedOrder.Id);
-            await Task.Delay(3000);
+            await BatchService.CancelBatchAsync(selectedBatch.Id);
             isProcessing = false;
-            await Task.Delay(1000);
-            await UpdateExternalOrderStatus(selectedOrder.Id);
-            selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
-            orders = await OrderService.GetOrdersAsync();
+            batches = await BatchService.GetBatchesAsync();
+            selectedBatch = null;
+            StateHasChanged();
         }
     }
 
-    private async Task DownloadCodes()
+    private async Task DownloadBatchContent()
     {
-        if (selectedOrder != null)
-        {
-            isDownloadingCodes = true;
-            await OrderService.DownloadCodesAsync(selectedOrder.Id);
-            await Task.Delay(3000);
-            isDownloadingCodes = false;
-            await Task.Delay(1000);
-            await UpdateExternalOrderStatus(selectedOrder.Id);
-            selectedOrder = await OrderService.GetOrderByIdAsync(selectedOrder.Id);
-            orders = await OrderService.GetOrdersAsync();
-        }
-    }
-
-    private async Task DownloadOrderContent()
-    {
-        if (selectedOrder != null)
+        if (selectedBatch != null)
         {
             isDownloadingContent = true;
-            var result = await OrderService.DownloadOrderContentAsync(selectedOrder.Id, "user");
-
+            var result = await BatchService.DownloadBatchContentAsync(selectedBatch.Id, "user");
             if (result is Microsoft.AspNetCore.Mvc.FileContentResult fileContentResult)
             {
-                var fileName = $"codes_{GetProductTypeString(selectedOrder.Type)}_{selectedOrder.Description}.txt";
+                var fileName = $"codes_{selectedBatch.Type}_{selectedBatch.Description}.txt";
                 var fileBytes = fileContentResult.FileContents;
-
-                // Trigger the file download
                 await DownloadFileAsync(fileName, fileBytes);
             }
             isDownloadingContent = false;
@@ -314,17 +307,17 @@
         showCreateOrderModal = false;
         gtinInput = string.Empty;
         filteredProducts = null;
-        newOrderForm = new OrderCreateForm();
+        newOrderForm = new BatchCreateForm();
     }
 
     private async Task CreateOrder()
     {
         try
         {
-            var result = await OrderService.CreateOrderAsync(newOrderForm);
+            var result = await BatchService.CreateBatchAsync(newOrderForm);
             if (result is not null)
             {
-                orders = await OrderService.GetOrdersAsync();
+                batches = await BatchService.GetBatchesAsync();
                 gtinInput = string.Empty;
                 filteredProducts = null;
                 showCreateOrderModal = false;
@@ -335,7 +328,7 @@
                 showCreateOrderModal = false;
                 gtinInput = string.Empty;
                 filteredProducts = null;
-                orders = await OrderService.GetOrdersAsync();
+                batches = await BatchService.GetBatchesAsync();
             }
         }
         catch (Exception ex)
@@ -344,14 +337,14 @@
             showCreateOrderModal = false;
             gtinInput = string.Empty;
             filteredProducts = null;
-            orders = await OrderService.GetOrdersAsync();
+            batches = await BatchService.GetBatchesAsync();
         }
     }
 
     private void OnGtinInput(ChangeEventArgs e)
     {
         gtinInput = e.Value?.ToString() ?? string.Empty;
-        
+
         filteredProducts = !string.IsNullOrEmpty(gtinInput)
             ? products?.Where(p => p.Gtin.Contains(gtinInput, StringComparison.OrdinalIgnoreCase)).Where(p => selectedType == "Pack" ? p.Type == 0 : p.Type == 1).Take(5)
             : null;
@@ -361,12 +354,10 @@
     {
         gtinInput = product.Gtin;
         newOrderForm.ProductId = product.Id;
-        newOrderForm.ProductUuid = product.ExternalUid;
         newOrderForm.Type = (sbyte)product.Type;
         filteredProducts = null;
         selectedType = "Pack";
     }
-
     private string GetProductTypeString(int type)
     {
         return type switch
@@ -381,17 +372,10 @@
     {
         return type switch
         {
-            -3 => "External Failed",
-            -2 => "External Saved_error",
-            -1 => "Sending error",
+            -1 => "Canceled",
             0 => "Created",
-            1 => "Sent",
-            2 => "Received",
-            3 => "Executing",
-            4 => "Ready",
-            5 => "Done",
-            _ => "Unknown"
+            1 => "Processing",
+            2 => "Received"
         };
     }
-
 }

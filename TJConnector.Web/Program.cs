@@ -15,8 +15,9 @@ builder.Services.AddScoped(sp => new HttpClient
 });
 
 builder.Services.AddScoped<IProductService, ProductService>();
-builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IOrderService, OrderServiceWeb>();
 builder.Services.AddScoped<IMetadataService, MetadataService>();
+builder.Services.AddScoped<IBatchServiceWeb, BatchServiceWeb>();
 builder.Services.AddScoped<IPackageRequestService, PackageRequestService>();
 
 
@@ -34,7 +35,7 @@ app.Use(async (context, next) =>
 {
     if (context.Request.Path == "/")
     {
-        context.Response.Redirect("/emission");
+        context.Response.Redirect("/batches");
         return;
     }
     await next();

@@ -16,5 +16,6 @@ namespace TJConnector.SharedLibrary.DTOs.Forms
         public string Description {  get; set; } = string.Empty;
         public int? ProductId { get; set; }
         public string User { get; set; } = string.Empty;
+        public int? BatchId { get; set; }
     }
 }
