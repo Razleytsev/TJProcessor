@@ -27,6 +27,7 @@ public class StateCheckSSCC : IConsumer<StateCheckSSCCBody1>
 
         containers.ForEach(x => x.Status = -1);
 
+        _logger.LogInformation($"Report new batch with {containers.Count()} SSCC");
         foreach (var container in containers)
             container.StatusHistory = new[] { new StatusHistory { Status = -1, StatusDate = DateTimeOffset.UtcNow } };
 
@@ -34,6 +35,8 @@ public class StateCheckSSCC : IConsumer<StateCheckSSCCBody1>
 
         foreach (var batch in batches)
         {
+            _logger.LogInformation($"Checking batch..");
+
             var containerStatusList = await _containerService.ContainerInfoList(new ListRequestRequest
             {
                 filters = new Filter { code = batch.Select(x => x.SSCCCode).ToArray() }
@@ -52,6 +55,7 @@ public class StateCheckSSCC : IConsumer<StateCheckSSCCBody1>
                     package.AddStatus(-1);
                     _context.Entry(package).State = EntityState.Modified;
                     await _context.SaveChangesAsync();
+                    _logger.LogWarning($"Not found in TJ state system: {package.SSCCCode}");
                     continue;
                 }
 
@@ -61,10 +65,12 @@ public class StateCheckSSCC : IConsumer<StateCheckSSCCBody1>
                     package.AddStatus(-1);
                     _context.Entry(package).State = EntityState.Modified;
                     await _context.SaveChangesAsync();
+                    _logger.LogWarning($"Incorrect status in TJ state system: {package.SSCCCode}");
                     continue;
                 }
 
-                package.Status = 1;
+                _logger.LogInformation($"OK status in TJ system: {package.SSCCCode}");
+                package.AddStatus(1);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
 
@@ -72,6 +78,7 @@ public class StateCheckSSCC : IConsumer<StateCheckSSCCBody1>
 
                 await message.Publish(new ExternalDbBody2 { Container = package });
             }
+            await Task.Delay(500);
         }
     }
 }

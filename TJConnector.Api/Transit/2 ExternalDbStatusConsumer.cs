@@ -24,6 +24,7 @@ public class ExternalDbCheck : IConsumer<ExternalDbBody2>
         var package = container.Message.Container;
 
         package.Status = -2;
+        _logger.LogInformation($"Checking package in external database: {package.SSCCCode}");
 
         var dbInfoList = await _externalDBData.GetContainerInfo(new List<string> { package.Code });
 
@@ -32,6 +33,7 @@ public class ExternalDbCheck : IConsumer<ExternalDbBody2>
             package.Comment = "SQL query error";
             package.AddStatus(-2);
             _context.Entry(package).State = EntityState.Modified;
+            _logger.LogWarning($"SQL query error: {package.SSCCCode}");
             await _context.SaveChangesAsync();
             return;
         }
@@ -43,6 +45,7 @@ public class ExternalDbCheck : IConsumer<ExternalDbBody2>
             package.Comment = "Package doesn't exist in external database";
             package.AddStatus(-2);
             _context.Entry(package).State = EntityState.Modified;
+            _logger.LogWarning($"Package doesn't exist in external database: {package.SSCCCode}");
             await _context.SaveChangesAsync();
             return;
         }
@@ -52,6 +55,7 @@ public class ExternalDbCheck : IConsumer<ExternalDbBody2>
             package.Comment = dbInfo.ExternalDbStatusMessage;
             package.AddStatus(-2);
             _context.Entry(package).State = EntityState.Modified;
+            _logger.LogWarning($"Incorrect status in external database: {package.SSCCCode}");
             await _context.SaveChangesAsync();
             return;
         }

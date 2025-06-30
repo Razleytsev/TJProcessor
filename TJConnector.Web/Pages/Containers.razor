@@ -93,7 +93,7 @@
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-6" style="width:40%" >
-                            <textarea class="form-control" style="height: 300px; font-size: 12px;" @bind="manualCodeInput"></textarea>
+                            <textarea class="form-control" style="height: 300px; font-size: 12px;" @onchange="HandleManualCodeInputChange"></textarea>
                             <button class="btn btn-secondary mt-2" @onclick="LoadCodesFromFile">Load from file</button>
                         </div>
                         <div class="col-6" style="width:60%;">
@@ -233,7 +233,10 @@
             ParseManualInput();
         }
     }
-
+    private void HandleManualCodeInputChange(ChangeEventArgs e)
+    {
+        manualCodeInput = e.Value?.ToString() ?? string.Empty;
+    }
     private async Task ProcessCodes()
     {
         ParseManualInput();

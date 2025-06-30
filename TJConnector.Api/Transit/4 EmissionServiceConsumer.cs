@@ -25,11 +25,10 @@ public class StateCreateApplication : IConsumer<StateCreateApplicationBody4>
     {
         var package = container.Message.Container;
 
-        _logger.LogWarning($"EMISSIONSERVICECONSUMER{package.SSCCCode}");
+        _logger.LogInformation($"Sending application: {package.SSCCCode}");
         package.Status = -4;
 
         var factory = await _context.Factories.FindAsync(1);
-        //var location = await _context.Locations.FindAsync(1);
         var markingLine = await _context.MarkingLines.FindAsync(1);
 
         if(factory == null ||  

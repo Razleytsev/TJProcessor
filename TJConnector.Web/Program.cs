@@ -7,7 +7,11 @@ using TJConnector.Web.Services.Implementation;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+builder.Services.AddServerSideBlazor()
+    .AddHubOptions(options =>
+    {
+        options.MaximumReceiveMessageSize = 1024 * 512;
+    });
 
 builder.Services.AddScoped(sp => new HttpClient
 {

@@ -25,7 +25,7 @@ public class StateCreateAggregation : IConsumer<StateCreateAggregationBody7>
     {
         var package = container.Message.Container;
 
-        _logger.LogWarning($"ContainerAggregationConsumer{package.SSCCCode}");
+        _logger.LogInformation($"Sending aggregation: {package.SSCCCode}");
         package.Status = -8;
 
         var location = await _context.Locations.FindAsync(1);

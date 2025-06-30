@@ -27,7 +27,7 @@ public class StateApplicationStatus : IConsumer<StateApplicationStatusBody5>
         var package = container.Message.Container;
         var statusList = await _emissionService.GetCodeApplicationInfo(package.ContentApplicationGuid ?? Guid.Empty);
 
-        _logger.LogTrace($"APPLICATIONSTATUSCONSUMER{package.SSCCCode}");
+        _logger.LogInformation($"Checking application status: {package.SSCCCode}");
         var status = statusList.Content;
 
         if (status == null)

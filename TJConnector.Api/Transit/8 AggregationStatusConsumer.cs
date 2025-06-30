@@ -23,7 +23,7 @@ public class StateAggregationStatus : IConsumer<StateAggregationStatusBody8>
         var package = container.Message.Container;
         var statusList = await _containerService.ContainerOperationCheck(package.AggregationGuid.Value);
 
-        _logger.LogWarning($"AggregationStatusConsumer{package.SSCCCode}");
+        _logger.LogInformation($"Checking aggregation status: {package.SSCCCode}");
         var status = statusList.Content;
 
         if (status == null)
@@ -78,6 +78,7 @@ public class StateAggregationStatus : IConsumer<StateAggregationStatusBody8>
                 package.Status = 12;
                 package.AddStatus(12);
                 package.Comment = "Reported";
+                _logger.LogInformation($"Reported: {package.SSCCCode}");
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
                 return;

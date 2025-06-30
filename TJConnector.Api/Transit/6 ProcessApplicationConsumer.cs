@@ -24,7 +24,7 @@ public class StateProcessApplication : IConsumer<StateApplicationProcessBody6>
     {
         var package = container.Message.Container;
 
-        _logger.LogWarning($"ProcessAPPLICATIONCONSUMER{package.SSCCCode}");
+        _logger.LogInformation($"Processing application: {package.SSCCCode}");
         var response = await _emissionService.ProcessCodeApplication
             (new ProcessDocument { uuids = new Guid[] { package.ContentApplicationGuid.Value } });
 
