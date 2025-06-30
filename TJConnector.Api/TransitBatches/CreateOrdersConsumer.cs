@@ -31,7 +31,7 @@ public class CreateOrdersConsumer : IConsumer<CreateOrdersForBatch>
         int createdOrders = 0;
 
         var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == batch.ProductId);
-        if (product == null)
+        if (product == null && batch.Type != 3)
         {
             _logger.LogError($"Product with ID {batch.ProductId} not found for batch {batch.Id}.");
             return;
@@ -45,7 +45,7 @@ public class CreateOrdersConsumer : IConsumer<CreateOrdersForBatch>
             var orderForm = new OrderCreateForm
             {
                 CodesCount = codesCount,
-                ProductUuid = product.ExternalUid,
+                ProductUuid = product?.ExternalUid,
                 MarkingLineUuid = null, 
                 FactoryUuid = null,  
                 Type = (sbyte)batch.Type,

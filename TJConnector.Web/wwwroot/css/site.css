@@ -155,5 +155,9 @@ h1:focus {
 }
 
 .text-danger {
-    color: #dc3545 !important;
+    color: #fff !important;
+    background-color: #dc3545 !important;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
 }
