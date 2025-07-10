@@ -38,7 +38,12 @@ public class ReprocessConsumer : IConsumer<ReprocessContainer0>
         }
         if (package.AggregationGuid == null)
         {
-            await container.Publish(new StateCreateAggregationBody7 { Container = package });
+            await container.Publish(new StateApplicationStatusBody5 { Container = package });
+            return;
+        }
+        else
+        {
+            await container.Publish(new StateAggregationStatusBody8 { Container = package });
             return;
         }
     }
