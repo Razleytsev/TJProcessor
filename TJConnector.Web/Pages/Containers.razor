@@ -114,8 +114,8 @@
                                     }
                                 </tbody>
                             </table>
+                                </div>
                         </div>
-                    </div>
                     @if (validationError)
                     {
                         <p class="text-danger" style="font-size: 12px;">Some codes do not pass validation. Please correct them.</p>
@@ -236,6 +236,7 @@
     private void HandleManualCodeInputChange(ChangeEventArgs e)
     {
         manualCodeInput = e.Value?.ToString() ?? string.Empty;
+        ParseManualInput();
     }
     private async Task ProcessCodes()
     {

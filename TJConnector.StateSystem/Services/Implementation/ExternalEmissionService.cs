@@ -367,7 +367,7 @@ namespace TJConnector.StateSystem.Services.Implementation
             }
 
             try
-            {
+            {  
                 var response = await _httpClient.GetAsync($"markingCode/report/apply/{uuid}");
 
                 if (!response.IsSuccessStatusCode)
