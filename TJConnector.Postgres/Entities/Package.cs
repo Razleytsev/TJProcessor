@@ -16,7 +16,9 @@
 
         public void AddStatus(int status)
         {
-            StatusHistory.Append(new StatusHistory { Status = status, StatusDate = DateTimeOffset.UtcNow });
+            StatusHistory = (StatusHistory ?? Array.Empty<StatusHistory>())
+                .Append(new StatusHistory { Status = status, StatusDate = DateTimeOffset.UtcNow })
+                .ToArray();
         }
     }
     public class PackageContent

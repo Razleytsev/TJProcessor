@@ -35,7 +35,7 @@ namespace TJConnector.StateSystem.Services.Implementation
 
             try
             {
-                var response = await _httpClient.GetAsync($"cotnainer/{code}");
+                var response = await _httpClient.GetAsync($"container/{code}");
 
                 if (!response.IsSuccessStatusCode)
                 {

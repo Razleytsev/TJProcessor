@@ -1,389 +1,676 @@
-﻿@page "/batches"
+@page "/batches"
 @using TJConnector.SharedLibrary.DTOs.Forms
 @using TJConnector.SharedLibrary.Models
+@using TJConnector.Postgres.Entities
+@implements IAsyncDisposable
 @inject IBatchServiceWeb BatchService
 @inject IProductService ProductService
 @inject IMetadataService MetadataService
 @inject IJSRuntime JSRuntime
 
-<h3>Order Batches</h3>
+<!-- ── Toast container ──────────────────────────────────────── -->
+<div class="toast-container">
+    @foreach (var t in toasts)
+    {
+        <div class="toast @t.CssClass">@t.Message</div>
+    }
+</div>
 
-<button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowCreateOrderModal">Create New Order</button>
-
-<div class="container">
-    <div class="table-container" style="width: 75%;font-size: 12px;">
-        @if (batches == null)
-        {
-            <p>Loading...</p>
-        }
-        else
-        {
-            <CustomTable Items="batches" Columns="columns" OnRowClick="EventCallback.Factory.Create<Batch>(this, OnBatchClick)" SelectedItem="selectedBatchToHigh" />
-        }
-    </div>
-    <div class="details-container" style="width: 25%;font-size: 12px;">
-        @if (selectedBatch != null)
-        {
-            <h4>Order Information</h4>
-            <div>
-                <p><strong>Type:</strong> @selectedBatch.Type</p>
-                <p><strong>Status:</strong> @selectedBatch.Status</p>
-                <p><strong>Gtin:</strong> @selectedBatch.ProductGtin</p>
-                <p><strong>Created At:</strong> @selectedBatch.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</p>
-                <p><strong>Requested Codes:</strong> @selectedBatch.RequestedCodes</p>
-                <p>
-                    <strong>Downloaded Codes:</strong>
-                    <span class="@(selectedBatch.Status == "Completed" && selectedBatch.RequestedCodes != selectedBatch.DownloadedCodes ? "text-danger" : "")">
-                        @selectedBatch.DownloadedCodes
-                    </span>
-                </p>
+<!-- ── Confirm dialog ────────────────────────────────────────── -->
+@if (showConfirm)
+{
+    <div class="modal-overlay">
+        <div class="confirm-box">
+            <p class="mb-3">@confirmMessage</p>
+            <div class="d-flex gap-2 justify-content-end">
+                <button class="btn btn-sm btn-danger" @onclick="ConfirmYes">Yes, Cancel</button>
+                <button class="btn btn-sm btn-secondary" @onclick="() => showConfirm = false">No</button>
             </div>
-            <h5>Status History</h5>
-            <table class="table table-borderless">
-                <thead>
-                    <tr>
-                        <th>GUID</th>
-                        <th>Status</th>
-                        <th>Requested</th>
-                        <th>Downloaded</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                @if (selectedBatch.Orders != null)
+        </div>
+    </div>
+}
+
+<!-- ── Page root ─────────────────────────────────────────────── -->
+<div class="page-root-flex">
+
+    <!-- Header -->
+    <div class="page-header">
+        <h5 class="mb-0">Order Batches</h5>
+        <div class="d-flex align-items-center gap-2">
+            @if (isRefreshing) { <span class="loading-spinner" title="Refreshing…"></span> }
+            <span class="text-xs text-muted">↻ @refreshInterval s</span>
+            <button class="btn btn-sm btn-primary" @onclick="ShowOrderCodesModal">+ Order Codes</button>
+        </div>
+    </div>
+
+    <!-- Split pane -->
+    <div class="split-pane-wrapper" id="batch-split-wrapper">
+
+        <!-- ── TOP: batch list ───────────────────────────────── -->
+        <div class="split-pane-top" style="flex: 0 0 @(topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
+            <div class="pane-toolbar">
+                <span class="pane-title">Batches (@(batches?.Count() ?? 0))</span>
+            </div>
+            <div class="pane-scroll">
+                @if (batches == null)
                 {
-                    <tbody>
-                        @foreach (var order in selectedBatch.Orders)
-                        {
-                            <tr>
-                                <td>@order.ExternalGuid</td>
-                                <td>@order.Status</td>
-                                <td>@order.RequestedCodes</td>
-                                <td class="@(selectedBatch.Status == "Completed" && order.RequestedCodes != order.DownloadedCodes ? "text-danger" : "")">
-                                    @order.DownloadedCodes
-                                </td>
-                                <td>@order.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
-                            </tr>
-                        }
-                    </tbody>
+                    <div class="loading-state">Loading batches…</div>
                 }
-            </table>
-            @if (selectedBatch.Status == "Created" || selectedBatch.Status == "Processing")
-            {
-                <button class="btn btn-danger" @onclick="CancelBatch" disabled="@isProcessing">Cancel</button>
-            }
-            else if (selectedBatch.Status == "Completed")
-            {
-                <button class="btn btn-success" @onclick="DownloadBatchContent" disabled="@isDownloadingContent">Download</button>
-            }
-        }
-        else
-        {
-            <p>Select a batch to view details.</p>
-        }
+                else if (!batches.Any())
+                {
+                    <div class="empty-state">No batches. Click "+ Order Codes" to create one.</div>
+                }
+                else
+                {
+                    <table class="table table-sm table-xs-font table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>ID</th>
+                                <th>Type</th>
+                                <th>GTIN</th>
+                                <th>Count</th>
+                                <th>Description</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var b in PagedBatches)
+                            {
+                                var (sc, sl) = BatchStatusInfo(b.Status);
+                                <tr class="@(selectedBatch?.Id == b.Id ? "highlighted-row" : "")"
+                                    style="cursor:pointer;" @onclick="() => SelectBatch(b)">
+                                    <td>@b.Id</td>
+                                    <td>@BatchTypeLabel(b.Type)</td>
+                                    <td>@(b.Product?.Gtin ?? "—")</td>
+                                    <td>@b.Count</td>
+                                    <td>@b.Description</td>
+                                    <td>@b.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
+                                    <td><span class="badge @sc">@sl</span></td>
+                                    <td class="cell-actions" @onclick:stopPropagation="true">
+                                        @if (b.Status == 0 || b.Status == 1)
+                                        {
+                                            <button class="btn-xs btn btn-outline-danger"
+                                                    @onclick="() => PromptCancelBatch(b)">Cancel</button>
+                                        }
+                                        @if (b.Status == 2)
+                                        {
+                                            <button class="btn-xs btn btn-outline-success"
+                                                    @onclick="() => DownloadBatch(b)">⬇</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (BatchTotalPages > 1)
+                    {
+                        <div class="pagination-bar">
+                            <button class="pg-btn" disabled="@(batchPage <= 1)"
+                                    @onclick="() => batchPage--">&#8249;</button>
+                            <span class="pg-info">@batchPage / @BatchTotalPages</span>
+                            <button class="pg-btn" disabled="@(batchPage >= BatchTotalPages)"
+                                    @onclick="() => batchPage++">&#8250;</button>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- ── Drag divider ──────────────────────────────────── -->
+        <div class="split-pane-divider" id="batch-divider">
+            <div class="divider-grip"></div>
+        </div>
+
+        <!-- ── BOTTOM: orders for selected batch ─────────────── -->
+        <div class="split-pane-bottom">
+            <div class="pane-toolbar">
+                @if (selectedBatch != null)
+                {
+                    var (sc, sl) = BatchStatusInfo(selectedBatch.Status);
+                    <span class="pane-title">
+                        Orders — Batch #@selectedBatch.Id &nbsp;
+                        <span class="badge @sc" style="font-size:10px;">@sl</span>
+                    </span>
+                    @if (selectedBatch.Status == 2 && selectedBatchDto != null)
+                    {
+                        <button class="btn btn-sm btn-outline-success ms-auto"
+                                @onclick="() => DownloadBatch(selectedBatch)">⬇ Download</button>
+                    }
+                    else if (selectedBatch.Status == 0 || selectedBatch.Status == 1)
+                    {
+                        <button class="btn btn-sm btn-outline-danger ms-auto"
+                                @onclick="() => PromptCancelBatch(selectedBatch)">Cancel Batch</button>
+                    }
+                }
+                else
+                {
+                    <span class="pane-title text-muted">Select a batch above to view its orders</span>
+                }
+            </div>
+            <div class="pane-scroll">
+                @if (selectedBatch == null)
+                {
+                    <div class="empty-state">Click a row in the top pane.</div>
+                }
+                else if (selectedBatchDto == null)
+                {
+                    <div class="loading-state">Loading orders…</div>
+                }
+                else if (!(selectedBatchDto.Orders?.Any() ?? false))
+                {
+                    <div class="empty-state">No orders for this batch yet.</div>
+                }
+                else
+                {
+                    <table class="table table-sm table-xs-font mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>ID</th>
+                                <th>External GUID</th>
+                                <th>Requested</th>
+                                <th>Downloaded</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var o in PagedOrders)
+                            {
+                                var (oc, ol) = OrderStatusInfo(o.Status ?? "");
+                                <tr>
+                                    <td>@o.Id</td>
+                                    <td class="cell-guid">@(o.ExternalGuid?.ToString() ?? "—")</td>
+                                    <td>@o.RequestedCodes</td>
+                                    <td class="@(selectedBatchDto.Status == "Completed" && o.RequestedCodes != o.DownloadedCodes ? "text-mismatch" : "")">
+                                        @o.DownloadedCodes
+                                    </td>
+                                    <td><span class="badge @oc">@ol</span></td>
+                                    <td>@o.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
+                                    <td class="text-xs text-muted">@o.StatusMessage</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (OrderTotalPages > 1)
+                    {
+                        <div class="pagination-bar">
+                            <button class="pg-btn" disabled="@(orderPage <= 1)"
+                                    @onclick="() => orderPage--">&#8249;</button>
+                            <span class="pg-info">@orderPage / @OrderTotalPages &nbsp;(total @(selectedBatchDto.Orders?.Count) orders)</span>
+                            <button class="pg-btn" disabled="@(orderPage >= OrderTotalPages)"
+                                    @onclick="() => orderPage++">&#8250;</button>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
     </div>
 </div>
 
-@if (showCreateOrderModal)
+<!-- ── "Order Codes" Modal ───────────────────────────────────── -->
+@if (showModal)
 {
-    <div class="modal" style="display: block;font-size: 12px;">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Create New Order</h5>
-                    <button type="button" class="close" @onclick="CloseCreateOrderModal">&times;</button>
+    <div class="modal-overlay" @onclick="CloseModal">
+        <div class="modal-dialog-box" @onclick:stopPropagation="true">
+            <div class="modal-dialog-header">
+                <span class="modal-dialog-title">Order Codes</span>
+                <button class="modal-close-btn" @onclick="CloseModal">×</button>
+            </div>
+            <div class="modal-dialog-body">
+
+                <!-- Type -->
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Type</label>
+                    <select class="form-select form-select-sm" @onchange="OnTypeChange">
+                        <option value="0" selected="@(selectedTypeVal == 0)">Pack</option>
+                        <option value="1" selected="@(selectedTypeVal == 1)">Bundle</option>
+                        <option value="3" selected="@(selectedTypeVal == 3)">Mastercase</option>
+                    </select>
                 </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="form-group">
-                            <label>Type</label>
-                            <select class="form-control" @onchange="OnTypeChange">
-                                <option value="Pack">Pack</option>
-                                <option value="Bundle">Bundle</option>
-                                <option value="Mastercase">Mastercase</option>
-                            </select>
-                        </div>
-                        @if (selectedType == "Mastercase")
+
+                <!-- GTIN autocomplete (Pack / Bundle only) -->
+                @if (selectedTypeVal != 3)
+                {
+                    <div class="mb-2" style="position:relative;">
+                        <label class="form-label form-label-sm">GTIN / Product Name</label>
+                        <input class="form-control form-control-sm"
+                               placeholder="Type to search…"
+                               value="@gtinInput"
+                               @oninput="OnGtinInput" />
+                        @if (filteredProducts != null && filteredProducts.Any())
                         {
-                            <div class="form-group">
-                                <label>Count Codes</label>
-                                <input type="number" class="form-control" @bind="newOrderForm.CodesCount" max="10000" />
-                            </div>
-                            <div class="form-group">
-                                <label>Description</label>
-                                <input type="text" class="form-control" @bind="newOrderForm.Description" />
-                            </div>
-                        }
-                        else if (selectedType == "Pack" || selectedType == "Bundle")
-                        {
-                            <div class="form-group" style="position: relative;">
-                                <label>GTIN</label>
-                                <input type="text" class="form-control" @bind="gtinInput" @oninput="OnGtinInput" />
-                                @if (filteredProducts != null && filteredProducts.Any())
+                            <div class="gtin-dropdown">
+                                @foreach (var p in filteredProducts)
                                 {
-                                    <ul class="list-group" style="position: absolute; z-index: 1000; width: 100%;">
-                                        @foreach (var product in filteredProducts)
-                                        {
-                                            <li class="list-group-item" @onclick="() => OnGtinSelected(product)">@product.Gtin</li>
-                                        }
-                                    </ul>
+                                    <div class="gtin-item" @onclick="() => SelectProduct(p)">
+                                        @p.Gtin — @p.Name
+                                    </div>
                                 }
                             </div>
-                            <div class="form-group">
-                                <label>Product ID</label>
-                                <input type="text" class="form-control" @bind="newOrderForm.ProductId" disabled />
-                            </div>
-                            <div class="form-group">
-                                <label>Type</label>
-                                <input type="text" class="form-control" @bind="newOrderForm.Type" disabled />
-                            </div>
-                            <div class="form-group">
-                                <label>Codes Count</label>
-                                <input type="number" class="form-control" @bind="newOrderForm.CodesCount" max="10000" />
-                            </div>
-                            <div class="form-group">
-                                <label>Description</label>
-                                <input type="text" class="form-control" @bind="newOrderForm.Description" />
-                            </div>
                         }
-                    </form>
+                        @if (modalForm.ProductId.HasValue)
+                        {
+                            <small class="text-muted">Product ID: @modalForm.ProductId selected ✓</small>
+                        }
+                    </div>
+                }
+
+                <!-- Codes count -->
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">
+                        Codes Count <span class="text-danger">*</span>
+                        <span class="text-xs text-muted">(multiple of 1 000)</span>
+                    </label>
+                    <input type="number" class="form-control form-control-sm @(!string.IsNullOrEmpty(codesCountError) ? "is-invalid" : "")"
+                           min="1000" step="1000"
+                           value="@codesCountInput"
+                           @oninput="OnCodesCountInput" />
+                    @if (!string.IsNullOrEmpty(codesCountError))
+                    {
+                        <div class="invalid-feedback">@codesCountError</div>
+                    }
                 </div>
-                <div class="modal-footer">
-                    <button class="btn btn-primary" @onclick="CreateOrder">Create</button>
-                    <button class="btn btn-secondary" @onclick="CloseCreateOrderModal">Cancel</button>
+
+                <!-- Factory -->
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Factory</label>
+                    <select class="form-select form-select-sm"
+                            disabled="@((factories?.Count() ?? 0) <= 1)"
+                            @bind="selectedFactoryId">
+                        <option value="0">— Select Factory —</option>
+                        @foreach (var f in factories ?? Enumerable.Empty<Factory>())
+                        {
+                            <option value="@f.Id">@f.Name</option>
+                        }
+                    </select>
+                    @if ((factories?.Count() ?? 0) == 1)
+                    {
+                        <small class="text-muted">Only one factory available — auto-selected.</small>
+                    }
                 </div>
+
+                <!-- Marking Line -->
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Marking Line</label>
+                    <select class="form-select form-select-sm"
+                            disabled="@((markingLines?.Count() ?? 0) <= 1)"
+                            @bind="selectedMarkingLineId">
+                        <option value="0">— Select Line —</option>
+                        @foreach (var ml in markingLines ?? Enumerable.Empty<MarkingLine>())
+                        {
+                            <option value="@ml.Id">@ml.Name</option>
+                        }
+                    </select>
+                    @if ((markingLines?.Count() ?? 0) == 1)
+                    {
+                        <small class="text-muted">Only one line available — auto-selected.</small>
+                    }
+                </div>
+
+                <!-- Description -->
+                <div class="mb-2">
+                    <label class="form-label form-label-sm">Description</label>
+                    <input class="form-control form-control-sm" @bind="modalForm.Description" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(modalError))
+                {
+                    <div class="alert alert-danger py-1 px-2 text-sm mt-2">@modalError</div>
+                }
+            </div>
+            <div class="modal-dialog-footer">
+                <button class="btn btn-sm btn-secondary" @onclick="CloseModal">Cancel</button>
+                <button class="btn btn-sm btn-primary" disabled="@isSubmitting" @onclick="SubmitOrder">
+                    @(isSubmitting ? "Creating…" : "Create Order")
+                </button>
             </div>
         </div>
     </div>
 }
 
 @code {
+    // ── Data ─────────────────────────────────────────────────────────────
     private IEnumerable<Batch>? batches;
-    private List<CustomTable<Batch>.ColumnDefinition<Batch>> columns = new();
-    private Batch? selectedBatchToHigh;
-    private BatchDTO? selectedBatch;
-    private bool showCreateOrderModal = false;
-    private BatchCreateForm newOrderForm = new();
-    private IEnumerable<Product>? products;
-    private string gtinInput = string.Empty;
-    private IEnumerable<Product>? filteredProducts = new List<Product>();
-    private PeriodicTimer? _timer;
+    private Batch? selectedBatch;
+    private BatchDTO? selectedBatchDto;
+    private IEnumerable<Product>? allProducts;
+    private IEnumerable<Factory>? factories;
+    private IEnumerable<MarkingLine>? markingLines;
+
+    // ── Pagination ────────────────────────────────────────────────────────
+    private const int BatchPageSize = 20;
+    private const int OrderPageSize = 5;
+    private int batchPage = 1;
+    private int orderPage = 1;
+
+    private IEnumerable<Batch> PagedBatches =>
+        (batches ?? Enumerable.Empty<Batch>())
+        .OrderByDescending(b => b.Id)
+        .Skip((batchPage - 1) * BatchPageSize).Take(BatchPageSize);
+
+    private int BatchTotalPages =>
+        (int)Math.Ceiling((batches?.Count() ?? 0) / (double)BatchPageSize);
+
+    private IEnumerable<OrderDTO> PagedOrders =>
+        (selectedBatchDto?.Orders ?? new List<OrderDTO>())
+        .Skip((orderPage - 1) * OrderPageSize).Take(OrderPageSize);
+
+    private int OrderTotalPages =>
+        (int)Math.Ceiling((selectedBatchDto?.Orders?.Count ?? 0) / (double)OrderPageSize);
+
+    // ── Auto-refresh ──────────────────────────────────────────────────────
     private CancellationTokenSource? _cts;
+    private bool isRefreshing = false;
+    private int refreshInterval = 5;
 
+    // ── Split pane ────────────────────────────────────────────────────────
+    private double topPct = 45;
+    private DotNetObjectReference<Batches>? _selfRef;
 
-    private string? selectedType = "Pack";
+    // ── Modal state ───────────────────────────────────────────────────────
+    private bool showModal = false;
+    private BatchCreateForm modalForm = new();
+    private int selectedTypeVal = 0;
+    private string gtinInput = string.Empty;
+    private IEnumerable<Product>? filteredProducts;
+    private int? codesCountInput;
+    private string codesCountError = string.Empty;
+    private int selectedFactoryId = 0;
+    private int selectedMarkingLineId = 0;
+    private string modalError = string.Empty;
+    private bool isSubmitting = false;
 
-    private void OnTypeChange(ChangeEventArgs e)
-    {
-        selectedType = e.Value?.ToString() ?? "Pack";
-        if (selectedType == "Pack")
-        {
-            newOrderForm.Type = 0;
-            gtinInput = string.Empty;
-        }
-        else if (selectedType == "Bundle")
-        {
-            newOrderForm.Type = 1;
-            gtinInput = string.Empty;
-        }
-        else if (selectedType == "Mastercase")
-        {
-            gtinInput = string.Empty;
-            newOrderForm.Type = 3;
-        }
-    }
+    // ── Confirm dialog ────────────────────────────────────────────────────
+    private bool showConfirm = false;
+    private string confirmMessage = string.Empty;
+    private Func<Task>? confirmAction;
 
+    // ── Toasts ────────────────────────────────────────────────────────────
+    private record ToastEntry(string Message, string CssClass);
+    private List<ToastEntry> toasts = new();
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
-        batches = await BatchService.GetBatchesAsync();
-        products = await ProductService.GetProductsAsync();
-
-
-        columns = new()
-        {
-            new() { Header = "ID", Value = o => o.Id },
-            new() { Header = "Type", Value = o => GetProductTypeString(o.Type) },
-            new() { Header = "Gtin", Value = o => o.Product?.Gtin ?? "N/A"  },
-            new() { Header = "Count", Value = o => o.Count },
-            new() { Header = "Created At", Value = o => o.RecordDate.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") },
-            new() { Header = "Status", Value = o => GetStatusTypeString(o.Status) },
-            new() { Header = "Description", Value = o => o.Description }
-        };
-        StartAutoUpdate();
-    }
-
-    private void StartAutoUpdate()
-    {
+        await Task.WhenAll(LoadBatchesAsync(), LoadMetadataAsync());
         _cts = new CancellationTokenSource();
-        _ = AutoUpdateLoop(_cts.Token);
+        _ = AutoRefreshLoop(_cts.Token);
     }
-    private async Task AutoUpdateLoop(CancellationToken token)
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        _timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
-        try
+        if (firstRender)
         {
-            while (await _timer.WaitForNextTickAsync(token))
-            {
-                await InvokeAsync(LoadDataAsync);
-            }
-        }
-        catch (OperationCanceledException)
-        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("initSplitPane", "batch-split-wrapper", "batch-divider", _selfRef);
         }
     }
-    private async Task LoadDataAsync()
+
+    public async ValueTask DisposeAsync()
     {
-        batches = await BatchService.GetBatchesAsync();
-        if (selectedBatch != null)
-        {
-            selectedBatch = await BatchService.GetBatchByIdAsync(selectedBatch.Id);
-            selectedBatchToHigh = batches?.FirstOrDefault(b => b.Id == selectedBatch.Id);
-        }
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _selfRef?.Dispose();
+    }
+
+    [JSInvokable]
+    public void SetTopPaneHeight(double pct)
+    {
+        topPct = pct;
         StateHasChanged();
     }
 
-    private async Task OnBatchClick(Batch batch)
+    // ── Load ──────────────────────────────────────────────────────────────
+    private async Task LoadBatchesAsync()
     {
-        //await UpdateExternalOrderStatus(batch.Id);
-        selectedBatch = await BatchService.GetBatchByIdAsync(batch.Id);
-        selectedBatchToHigh = batches?.FirstOrDefault(b => b.Id == selectedBatch.Id);
+        batches = await BatchService.GetBatchesAsync();
     }
 
-    public void Dispose()
+    private async Task LoadMetadataAsync()
     {
-        _cts?.Cancel();
-        _timer?.Dispose();
-        _cts?.Dispose();
+        allProducts   = await ProductService.GetProductsAsync();
+        factories     = await MetadataService.GetFactoriesAsync();
+        markingLines  = await MetadataService.GetMarkingLinesAsync();
+
+        if (factories?.Count() == 1)     selectedFactoryId    = factories.First().Id;
+        if (markingLines?.Count() == 1)  selectedMarkingLineId = markingLines.First().Id;
     }
 
-    private async Task UpdateExternalOrderStatus(int orderId)
+    // ── Auto-refresh ──────────────────────────────────────────────────────
+    private async Task AutoRefreshLoop(CancellationToken token)
     {
-        var result = await BatchService.GetBatchByIdAsync(orderId);
-        if (result is not null)
+        while (!token.IsCancellationRequested)
         {
-            selectedBatch = result;
-        }
-        else
-        {
-            Console.WriteLine("Failed to update external order status: " + orderId);
-        }
-    }
+            bool hasActive = batches?.Any(b => b.Status == 0 || b.Status == 1) ?? false;
+            refreshInterval = hasActive ? 5 : 30;
 
-    private bool isProcessing = false;
-    private bool isDownloadingContent = false;
+            try { await Task.Delay(TimeSpan.FromSeconds(refreshInterval), token); }
+            catch (OperationCanceledException) { return; }
 
-    private async Task CancelBatch()
-    {
-        if (selectedBatch != null)
-        {
-            isProcessing = true;
-            await BatchService.CancelBatchAsync(selectedBatch.Id);
-            isProcessing = false;
-            batches = await BatchService.GetBatchesAsync();
-            selectedBatch = null;
-            StateHasChanged();
-        }
-    }
+            isRefreshing = true;
+            await InvokeAsync(StateHasChanged);
 
-    private async Task DownloadBatchContent()
-    {
-        if (selectedBatch != null)
-        {
-            isDownloadingContent = true;
-            var result = await BatchService.DownloadBatchContentAsync(selectedBatch.Id, "user");
-            if (result is Microsoft.AspNetCore.Mvc.FileContentResult fileContentResult)
+            try
             {
-                var fileName = $"codes_{selectedBatch.Type}_{selectedBatch.Description}.txt";
-                var fileBytes = fileContentResult.FileContents;
-                await DownloadFileAsync(fileName, fileBytes);
+                batches = await BatchService.GetBatchesAsync();
+                if (selectedBatch != null)
+                {
+                    selectedBatchDto = await BatchService.GetBatchByIdAsync(selectedBatch.Id);
+                    selectedBatch = batches?.FirstOrDefault(b => b.Id == selectedBatch.Id) ?? selectedBatch;
+                }
             }
-            isDownloadingContent = false;
+            catch { /* silently keep stale data */ }
+
+            isRefreshing = false;
+            await InvokeAsync(StateHasChanged);
         }
     }
 
-    private async Task DownloadFileAsync(string fileName, byte[] content)
+    // ── Select batch ──────────────────────────────────────────────────────
+    private async Task SelectBatch(Batch batch)
     {
-        var fileStream = new System.IO.MemoryStream(content);
-        using var streamRef = new DotNetStreamReference(fileStream);
-
-        await JSRuntime.InvokeVoidAsync("downloadFileFromStream", fileName, streamRef);
+        selectedBatch = batch;
+        selectedBatchDto = null;
+        orderPage = 1;
+        try
+        {
+            selectedBatchDto = await BatchService.GetBatchByIdAsync(batch.Id);
+        }
+        catch
+        {
+            ShowToast("Failed to load batch details.", "toast-error");
+        }
     }
 
-    private void ShowCreateOrderModal() => showCreateOrderModal = true;
-
-    private void CloseCreateOrderModal()
+    // ── Cancel ────────────────────────────────────────────────────────────
+    private void PromptCancelBatch(Batch batch)
     {
-        showCreateOrderModal = false;
-        gtinInput = string.Empty;
-        filteredProducts = null;
-        newOrderForm = new BatchCreateForm();
+        confirmMessage = $"Cancel Batch #{batch.Id} ({BatchTypeLabel(batch.Type)})? This cannot be undone.";
+        confirmAction  = async () =>
+        {
+            try
+            {
+                await BatchService.CancelBatchAsync(batch.Id);
+                batches = await BatchService.GetBatchesAsync();
+                if (selectedBatch?.Id == batch.Id)
+                {
+                    selectedBatchDto = await BatchService.GetBatchByIdAsync(batch.Id);
+                    selectedBatch = batches?.FirstOrDefault(b => b.Id == batch.Id) ?? selectedBatch;
+                }
+                ShowToast($"Batch #{batch.Id} cancelled.", "toast-success");
+            }
+            catch
+            {
+                ShowToast("Cancel failed. Try again.", "toast-error");
+            }
+        };
+        showConfirm = true;
     }
 
-    private async Task CreateOrder()
+    private async Task ConfirmYes()
+    {
+        showConfirm = false;
+        if (confirmAction != null) { await confirmAction(); confirmAction = null; }
+    }
+
+    // ── Download ──────────────────────────────────────────────────────────
+    private async Task DownloadBatch(Batch batch)
     {
         try
         {
-            var result = await BatchService.CreateBatchAsync(newOrderForm);
-            if (result is not null)
+            var result = await BatchService.DownloadBatchContentAsync(batch.Id, "user");
+            if (result is Microsoft.AspNetCore.Mvc.FileContentResult file)
             {
-                batches = await BatchService.GetBatchesAsync();
-                gtinInput = string.Empty;
-                filteredProducts = null;
-                showCreateOrderModal = false;
-            }
-            else
-            {
-                Console.WriteLine("Failed to create order.");
-                showCreateOrderModal = false;
-                gtinInput = string.Empty;
-                filteredProducts = null;
-                batches = await BatchService.GetBatchesAsync();
+                var name = $"codes_{BatchTypeLabel(batch.Type)}_{batch.Id}.txt";
+                using var stream = new System.IO.MemoryStream(file.FileContents);
+                using var streamRef = new DotNetStreamReference(stream);
+                await JSRuntime.InvokeVoidAsync("downloadFileFromStream", name, streamRef);
+                ShowToast("Download started.", "toast-success");
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error creating order: {ex.Message}");
-            showCreateOrderModal = false;
-            gtinInput = string.Empty;
-            filteredProducts = null;
-            batches = await BatchService.GetBatchesAsync();
-        }
+        catch { ShowToast("Download failed.", "toast-error"); }
+    }
+
+    // ── Modal ─────────────────────────────────────────────────────────────
+    private void ShowOrderCodesModal()
+    {
+        modalForm             = new BatchCreateForm { Type = 0 };
+        selectedTypeVal       = 0;
+        gtinInput             = string.Empty;
+        filteredProducts      = null;
+        codesCountInput       = null;
+        codesCountError       = string.Empty;
+        modalError            = string.Empty;
+        isSubmitting          = false;
+        showModal             = true;
+
+        if (factories?.Count()    == 1) selectedFactoryId     = factories.First().Id;
+        if (markingLines?.Count() == 1) selectedMarkingLineId = markingLines.First().Id;
+    }
+
+    private void CloseModal() => showModal = false;
+
+    private void OnTypeChange(ChangeEventArgs e)
+    {
+        selectedTypeVal       = int.TryParse(e.Value?.ToString(), out var v) ? v : 0;
+        modalForm.Type        = (sbyte)selectedTypeVal;
+        modalForm.ProductId   = null;
+        gtinInput             = string.Empty;
+        filteredProducts      = null;
     }
 
     private void OnGtinInput(ChangeEventArgs e)
     {
         gtinInput = e.Value?.ToString() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(gtinInput)) { filteredProducts = null; return; }
 
-        filteredProducts = !string.IsNullOrEmpty(gtinInput)
-            ? products?.Where(p => p.Gtin.Contains(gtinInput, StringComparison.OrdinalIgnoreCase)).Where(p => selectedType == "Pack" ? p.Type == 0 : p.Type == 1).Take(5)
-            : null;
+        filteredProducts = allProducts?
+            .Where(p => selectedTypeVal == 0 ? p.Type == 0 : p.Type == 1)
+            .Where(p => p.Gtin.Contains(gtinInput, StringComparison.OrdinalIgnoreCase)
+                     || (p.Name?.Contains(gtinInput, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Take(8);
     }
 
-    private void OnGtinSelected(Product product)
+    private void SelectProduct(Product p)
     {
-        gtinInput = product.Gtin;
-        newOrderForm.ProductId = product.Id;
-        newOrderForm.Type = (sbyte)product.Type;
-        filteredProducts = null;
-        selectedType = "Pack";
+        gtinInput          = $"{p.Gtin} — {p.Name}";
+        modalForm.ProductId = p.Id;
+        modalForm.Type      = (sbyte)p.Type;
+        filteredProducts   = null;
     }
-    private string GetProductTypeString(int type)
+
+    private void OnCodesCountInput(ChangeEventArgs e)
     {
-        return type switch
+        if (int.TryParse(e.Value?.ToString(), out var val))
         {
-            0 => "Pack",
-            1 => "Bundle",
-            3 => "Mastercase",
-            _ => "Unknown"
-        };
+            codesCountInput = val;
+            codesCountError = val <= 0 ? "Minimum 1 000."
+                            : val % 1000 != 0 ? "Must be a multiple of 1 000."
+                            : string.Empty;
+        }
+        else
+        {
+            codesCountInput = null;
+            codesCountError = "Enter a number.";
+        }
     }
-    private string GetStatusTypeString(int type)
+
+    private async Task SubmitOrder()
     {
-        return type switch
+        // Validate
+        if (!codesCountInput.HasValue || codesCountInput <= 0 || codesCountInput % 1000 != 0)
         {
-            -1 => "Canceled",
-            0 => "Created",
-            1 => "Processing",
-            2 => "Completed"
-        };
+            codesCountError = "Codes count is required and must be a multiple of 1 000.";
+            return;
+        }
+        if (selectedTypeVal != 3 && !modalForm.ProductId.HasValue)
+        {
+            modalError = "Please select a product.";
+            return;
+        }
+
+        modalForm.CodesCount = codesCountInput!.Value;
+        modalForm.Type       = (sbyte)selectedTypeVal;
+        modalForm.User       = "user";
+        modalError           = string.Empty;
+        isSubmitting         = true;
+
+        try
+        {
+            var created = await BatchService.CreateBatchAsync(modalForm);
+            batches = await BatchService.GetBatchesAsync();
+            showModal = false;
+            ShowToast($"Batch #{created?.Id} created.", "toast-success");
+        }
+        catch (Exception ex)
+        {
+            modalError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    private static string BatchTypeLabel(int type) => type switch
+    {
+        0 => "Pack", 1 => "Bundle", 3 => "Mastercase", _ => $"Type{type}"
+    };
+
+    private static (string css, string label) BatchStatusInfo(int status) => status switch
+    {
+        -1 => ("badge-canceled",   "Canceled"),
+         0 => ("badge-created",    "Created"),
+         1 => ("badge-processing", "Processing"),
+         2 => ("badge-completed",  "Completed"),
+         _ => ("badge-unknown",    $"Status {status}")
+    };
+
+    private static (string css, string label) OrderStatusInfo(string status) => status switch
+    {
+        "External Failed"      => ("badge-error",      "Ext. Failed"),
+        "External Saved_error" => ("badge-error",      "Ext. Save Err"),
+        "Sending error"        => ("badge-error",      "Send Error"),
+        "Created"              => ("badge-created",    "Created"),
+        "Sent"                 => ("badge-info",       "Sent"),
+        "Received"             => ("badge-info",       "Received"),
+        "Executing"            => ("badge-processing", "Executing"),
+        "Ready"                => ("badge-ready",      "Ready"),
+        "Done"                 => ("badge-completed",  "Done"),
+        _                      => ("badge-unknown",    status)
+    };
+
+    private async void ShowToast(string message, string cssClass)
+    {
+        var entry = new ToastEntry(message, cssClass);
+        toasts.Add(entry);
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(4000);
+        toasts.Remove(entry);
+        await InvokeAsync(StateHasChanged);
     }
 }

@@ -43,6 +43,8 @@ public class ProcessOrdersConsumer : IConsumer<ProcessOrdersForBatch>
             return;
         }
 
+        _logger.LogInformation($"Batch {batch.Id}: processing {processingOrders.Count} active orders.");
+
         foreach (var order in processingOrders)
         {
             try
@@ -56,6 +58,7 @@ public class ProcessOrdersConsumer : IConsumer<ProcessOrdersForBatch>
                             order.Status = 3;
                             _context.Entry(order).State = EntityState.Modified;
                             await _context.SaveChangesAsync();
+                            _logger.LogInformation($"Order {order.Id}: sent for processing (2→3).");
                         }
                         break;
 
@@ -68,9 +71,15 @@ public class ProcessOrdersConsumer : IConsumer<ProcessOrdersForBatch>
                             var codesOrder = await _orderService.GetCodesFromOrderAsync(order.Id);
                             if (codesOrder != null)
                             {
-                                order.Status = 3;
+                                // FIX: codes successfully downloaded → order is Done (5), not re-queued (3)
+                                order.Status = 5;
                                 _context.Entry(order).State = EntityState.Modified;
                                 await _context.SaveChangesAsync();
+                                _logger.LogInformation($"Order {order.Id}: codes downloaded, marked Done (4→5).");
+                            }
+                            else
+                            {
+                                _logger.LogWarning($"Order {order.Id}: code download failed, will retry.");
                             }
                         }
                         else
@@ -78,13 +87,16 @@ public class ProcessOrdersConsumer : IConsumer<ProcessOrdersForBatch>
                             order.Status = 5;
                             _context.Entry(order).State = EntityState.Modified;
                             await _context.SaveChangesAsync();
+                            _logger.LogInformation($"Order {order.Id}: content already present, marked Done (4→5).");
                         }
                         break;
 
                     case 0:
                     case 1:
                     case 3:
-                        await _orderService.GetExternalOrderByIdAsync(order.Id);
+                        var refreshed = await _orderService.GetExternalOrderByIdAsync(order.Id);
+                        if (refreshed != null && refreshed.Status != order.Status)
+                            _logger.LogInformation($"Order {order.Id}: external status refresh {order.Status}→{refreshed.Status}.");
                         break;
                 }
             }
@@ -92,7 +104,14 @@ public class ProcessOrdersConsumer : IConsumer<ProcessOrdersForBatch>
             {
                 _logger.LogError(ex, $"Error processing order {order.Id} in batch {batch.Id}");
             }
+
+            // Inter-request delay: give the external API time to breathe between calls
+            await Task.Delay(1000);
         }
+
+        // Wait before re-checking: allow external system time to advance order states
+        _logger.LogInformation($"Batch {batch.Id}: round complete, waiting 15 s before next check.");
+        await Task.Delay(15000);
 
         await _publishEndpoint.Publish(new ProcessOrdersForBatch { Batch = batch });
     }

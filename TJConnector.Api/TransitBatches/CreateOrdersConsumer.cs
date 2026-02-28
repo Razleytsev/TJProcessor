@@ -65,6 +65,7 @@ public class CreateOrdersConsumer : IConsumer<CreateOrdersForBatch>
                 else
                 {
                     createdOrders++;
+                    _logger.LogInformation($"Batch {batch.Id}: created order {orderIndex + 1} ({codesCount} codes).");
                 }
             }
             catch (Exception ex)
@@ -74,6 +75,10 @@ public class CreateOrdersConsumer : IConsumer<CreateOrdersForBatch>
 
             totalCount -= codesCount;
             orderIndex++;
+
+            // Inter-order delay: avoid hammering the external emission API with back-to-back requests
+            if (totalCount > 0)
+                await Task.Delay(2000);
         }
 
         batch.Status = 1;

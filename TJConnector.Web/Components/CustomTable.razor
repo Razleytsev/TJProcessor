@@ -1,25 +1,25 @@
-﻿@typeparam TItem
+@typeparam TItem
 
-<input id="filter" @bind="FilterText" @bind:event="oninput" placeholder="Filter" />
+<input id="filter" @bind="FilterText" @bind:event="oninput" @bind:after="OnFilterChanged" placeholder="Filter" />
 
 <div class="table-wrapper">
-    <table class="table">
+    <table class="table table-sm table-xs-font">
         <thead>
             <tr>
                 @foreach (var column in Columns)
                 {
-                    <th @onclick="() => SortBy(column)">
+                    <th @onclick="() => SortBy(column)" style="cursor:pointer; user-select:none;">
                         @column.Header
                         @if (SortColumn == column)
                         {
-                            <span>@(SortAscending ? "▲" : "▼")</span>
+                            <span>@(SortAscending ? " ▲" : " ▼")</span>
                         }
                     </th>
                 }
             </tr>
         </thead>
         <tbody>
-            @foreach (var item in FilteredItems)
+            @foreach (var item in PagedItems)
             {
                 <tr @onclick="() => OnRowClick.InvokeAsync(item)" class="@(GetRowClass(item))">
                     @foreach (var column in Columns)
@@ -28,9 +28,24 @@
                     }
                 </tr>
             }
+            @if (!PagedItems.Any())
+            {
+                <tr>
+                    <td colspan="@Columns.Count" class="text-center text-muted py-3">No items found</td>
+                </tr>
+            }
         </tbody>
     </table>
 </div>
+
+@if (PageSize > 0 && TotalPages > 1)
+{
+    <div class="pagination-bar">
+        <button class="pg-btn" disabled="@(CurrentPage <= 1)" @onclick="PrevPage">&#8249;</button>
+        <span class="pg-info">Page @CurrentPage of @TotalPages (@TotalFiltered items)</span>
+        <button class="pg-btn" disabled="@(CurrentPage >= TotalPages)" @onclick="NextPage">&#8250;</button>
+    </div>
+}
 
 @code {
     [Parameter]
@@ -45,23 +60,43 @@
     [Parameter]
     public TItem? SelectedItem { get; set; }
 
+    [Parameter]
+    public int PageSize { get; set; } = 0;
+
     private string FilterText { get; set; } = string.Empty;
     private ColumnDefinition<TItem>? SortColumn { get; set; }
     private bool SortAscending { get; set; } = true;
+    private int CurrentPage { get; set; } = 1;
 
     protected override void OnInitialized()
     {
         if (Columns.Any())
         {
             SortColumn = Columns.First();
-            SortAscending = false; 
+            SortAscending = false;
         }
     }
 
-    private IEnumerable<TItem> FilteredItems => Items
-        .Where(item => Columns.Any(column => column.Value(item)?.ToString()?.Contains(FilterText, StringComparison.OrdinalIgnoreCase) == true))
+    private void OnFilterChanged()
+    {
+        CurrentPage = 1;
+    }
+
+    private IEnumerable<TItem> FilteredSorted => Items
+        .Where(item => string.IsNullOrEmpty(FilterText) || Columns.Any(column =>
+            column.Value(item)?.ToString()?.Contains(FilterText, StringComparison.OrdinalIgnoreCase) == true))
         .OrderBy(item => SortColumn != null && !SortAscending ? null : SortColumn?.Value(item))
         .ThenByDescending(item => SortColumn != null && !SortAscending ? SortColumn?.Value(item) : null);
+
+    private IEnumerable<TItem> PagedItems => PageSize > 0
+        ? FilteredSorted.Skip((CurrentPage - 1) * PageSize).Take(PageSize)
+        : FilteredSorted;
+
+    private int TotalFiltered => FilteredSorted.Count();
+
+    private int TotalPages => PageSize > 0
+        ? (int)Math.Ceiling(TotalFiltered / (double)PageSize)
+        : 1;
 
     private void SortBy(ColumnDefinition<TItem> column)
     {
@@ -74,6 +109,17 @@
             SortColumn = column;
             SortAscending = true;
         }
+        CurrentPage = 1;
+    }
+
+    private void PrevPage()
+    {
+        if (CurrentPage > 1) CurrentPage--;
+    }
+
+    private void NextPage()
+    {
+        if (CurrentPage < TotalPages) CurrentPage++;
     }
 
     private string GetRowClass(TItem item)
