@@ -7,6 +7,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json.Serialization;
 using TJConnector.Api.Services;
+using TJConnector.Api.TestRun;
 using TJConnector.Api.Transit;
 using TJConnector.Api.TransitBatches;
 using TJConnector.Postgres;
@@ -56,6 +57,7 @@ builder.Services.AddScoped<IExternalProduct, ExternalProductService>();
 builder.Services.AddSingleton<ISQLConnectionFactory, SQLConnectionFactory>();
 builder.Services.AddScoped<IExternalDBData, ExternalDbData>();
 builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<ITestRunService, TestRunService>();
 
 builder.Services.AddMassTransit(cfg =>
 {
@@ -78,6 +80,12 @@ builder.Services.AddMassTransit(cfg =>
     cfg.AddConsumer<BatchInitialConsumer>();
     cfg.AddConsumer<CreateOrdersConsumer>();
     cfg.AddConsumer<ProcessOrdersConsumer>();
+
+    cfg.AddConsumer<EmitPacksConsumer>();
+    cfg.AddConsumer<EmitBundlesConsumer>();
+    cfg.AddConsumer<EmitMastercaseConsumer>();
+    cfg.AddConsumer<SubmitApplicationConsumer>();
+    cfg.AddConsumer<SubmitAggregationConsumer>();
 });
 
 //builder.Services.AddSignalR();
