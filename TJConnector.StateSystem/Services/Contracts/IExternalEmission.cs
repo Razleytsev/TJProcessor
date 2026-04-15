@@ -1,4 +1,5 @@
-﻿using TJConnector.StateSystem.Model.ExternalRequests.Generic;
+﻿using TJConnector.StateSystem.Model.ExternalRequests.Container;
+using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
 using TJConnector.StateSystem.Model.ExternalResponses.Container;
 using TJConnector.StateSystem.Model.ExternalResponses.Generic;
@@ -17,6 +18,7 @@ namespace TJConnector.StateSystem.Services.Contracts
 
         Task<CustomResult<EmissionInfoResponse>> GetContainerEmissionInfo(Guid uuid);
         Task<CustomResult<DocumentCreateResponse>> CreateContainerEmission(EmissionCreateRequest body);
+        Task<CustomResult<DocumentCreateResponse>> CreateContainerEmissionMinimal(ContainerEmissionCreateRequest body);
         Task<CustomResult<ProcessResponse>> ProcessContainerEmission(ProcessDocument body);
         Task<CustomResult<EmissionCodesResponse>> GetCodesFromContainerEmission(DownloadCodesRequest body);
 

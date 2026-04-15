@@ -2,6 +2,7 @@
 using Newtonsoft.Json;
 using System.Net.Http.Json;
 using TJConnector.StateSystem.Helpers;
+using TJConnector.StateSystem.Model.ExternalRequests.Container;
 using TJConnector.StateSystem.Model.ExternalRequests.Generic;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
 using TJConnector.StateSystem.Model.ExternalResponses.Container;
@@ -233,6 +234,35 @@ namespace TJConnector.StateSystem.Services.Implementation
                 return new CustomResult<DocumentCreateResponse> { Success = false, Message = ex.Message };
             }
         }
+        public async Task<CustomResult<DocumentCreateResponse>> CreateContainerEmissionMinimal(ContainerEmissionCreateRequest body)
+        {
+            if (body == null)
+            {
+                _logger.LogError("Container emission minimal request body cannot be null.");
+                return new CustomResult<DocumentCreateResponse> { Success = false, Message = "Request body is required." };
+            }
+
+            try
+            {
+                var response = await _httpClient.PostAsJsonAsync("container/emission", body);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorResponse = await response.Content.ReadFromJsonAsync<ExternalApiErrorResponse>();
+                    _logger.LogError($"Failed to create container emission (minimal). Status code: {response.StatusCode}, Message: {errorResponse?.message}");
+                    return new CustomResult<DocumentCreateResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<DocumentCreateResponse>();
+                return new CustomResult<DocumentCreateResponse> { Content = result, Success = true };
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An error occurred while creating container emission (minimal).");
+                return new CustomResult<DocumentCreateResponse> { Success = false, Message = ex.Message };
+            }
+        }
+
         public async Task<CustomResult<ProcessResponse>> ProcessContainerEmission(ProcessDocument body)
         {
             if (body == null)
