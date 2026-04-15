@@ -23,6 +23,7 @@ builder.Services.AddScoped<IOrderService, OrderServiceWeb>();
 builder.Services.AddScoped<IMetadataService, MetadataService>();
 builder.Services.AddScoped<IBatchServiceWeb, BatchServiceWeb>();
 builder.Services.AddScoped<IPackageRequestService, PackageRequestService>();
+builder.Services.AddScoped<ITestRunServiceWeb, TestRunServiceWeb>();
 
 
 
