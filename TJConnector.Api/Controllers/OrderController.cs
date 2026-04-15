@@ -4,6 +4,7 @@ using TJConnector.Api.Services;
 using TJConnector.Postgres;
 using TJConnector.Postgres.Entities;
 using TJConnector.SharedLibrary.DTOs.Forms;
+using TJConnector.StateSystem.Helpers;
 
 namespace TJConnector.Api.Controllers;
 
@@ -92,7 +93,7 @@ public class OrderController : ControllerBase
             return NotFound();
         }
 
-        var fileContent = string.Join(Environment.NewLine, content.OrderContent);
+        var fileContent = string.Join(Environment.NewLine, content.OrderContent.Select(GS1CodeHelper.StripGroupSeparators));
         return File(Encoding.UTF8.GetBytes(fileContent), "text/plain", $"codes_{id}.txt");
     }
 

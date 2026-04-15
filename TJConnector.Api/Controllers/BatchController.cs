@@ -10,6 +10,7 @@ using TJConnector.SharedLibrary.DTOs.Forms;
 using TJConnector.SharedLibrary.Models;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
 using TJConnector.StateSystem.Model.ExternalResponses.Container;
+using TJConnector.StateSystem.Helpers;
 using TJConnector.StateSystem.Model.ExternalResponses.Generic;
 using TJConnector.StateSystem.Services.Contracts;
 
@@ -96,7 +97,7 @@ public class BatchController : ControllerBase
             {
                 content += Environment.NewLine;
             }
-            content += string.Join(Environment.NewLine, orderContent.OrderContent);
+            content += string.Join(Environment.NewLine, orderContent.OrderContent.Select(GS1CodeHelper.StripGroupSeparators));
         }
 
         await _context.SaveChangesAsync();
