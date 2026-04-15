@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using TJConnector.Api.Hubs;
 using TJConnector.Postgres;
 using TJConnector.Postgres.Entities;
+using TJConnector.StateSystem.Helpers;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
 using TJConnector.StateSystem.Services.Contracts;
 
@@ -30,11 +31,13 @@ public class StateCreateApplication : IConsumer<StateCreateApplicationBody4>
 
         var factory = await _context.Factories.FindAsync(1);
         var markingLine = await _context.MarkingLines.FindAsync(1);
+        var location = await _context.Locations.FirstOrDefaultAsync();
 
-        if(factory == null ||  
-            markingLine == null)
+        if(factory == null ||
+            markingLine == null ||
+            location == null)
         {
-            package.Comment = "Check metadata (factory, marking line)";
+            package.Comment = "Check metadata (factory, marking line, location)";
             package.AddStatus(-4);
             _context.Entry(package).State = EntityState.Modified;
             await _context.SaveChangesAsync();
@@ -50,18 +53,43 @@ public class StateCreateApplication : IConsumer<StateCreateApplicationBody4>
             return;
         }
 
+        var groupCodes = new List<GroupCode>(package.Content.Count);
+        var badSamples = new List<string>();
+        foreach (var entry in package.Content)
+        {
+            if (!GS1CodeHelper.TryInsertGroupSeparator(entry.Bundle, out var bundleWithGs))
+            {
+                if (badSamples.Count < 5) badSamples.Add(entry.Bundle);
+                continue;
+            }
+            groupCodes.Add(new GroupCode
+            {
+                groupCode = bundleWithGs,
+                codes = entry.Packs.ToArray()
+            });
+        }
+
+        if (badSamples.Count > 0)
+        {
+            var sample = string.Join(", ", badSamples);
+            _logger.LogError("Malformed bundle codes for package {Sscc}: {Samples}", package.SSCCCode, sample);
+            package.Comment = $"Malformed bundle codes (samples): {sample}";
+            package.AddStatus(-4);
+            _context.Entry(package).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return;
+        }
+
         var applicationBody = new ApplicationCreateRequest
         {
             applicationDate = DateTimeOffset.UtcNow.AddHours(-4),
+            productionDate = DateTimeOffset.UtcNow,
             factoryUuid = factory.ExternalUid,
             markingLineUuid = markingLine.ExternalUid,
+            locationUuid = location.ExternalUid,
             result = 0,
             type = 2,
-            groupCodes = package.Content.Select(x => new GroupCode()
-            {
-                groupCode = x.Bundle,
-                codes = x.Packs.ToArray()
-            }).ToList()
+            groupCodes = groupCodes
         };
 
         var response = await _emissionService.CreateCodeApplication(applicationBody);
