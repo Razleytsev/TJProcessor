@@ -67,7 +67,11 @@ public class OrderService : IOrderService
 
         if (!externalOrder.Success || externalOrder.Content == null) return null;
 
-        localOrder.Status = externalOrder.Content.status switch
+        _logger.LogInformation(
+            "Order {OrderId} external sync: raw external status={RawStatus}, current internal status={InternalStatus}",
+            localOrder.Id, externalOrder.Content.status, currentStatus);
+
+        var mappedStatus = externalOrder.Content.status switch
         {
             0 => -2,
             1 => 2,
@@ -76,6 +80,16 @@ public class OrderService : IOrderService
             5 => -3,
             _ => -4
         };
+
+        if (currentStatus == 5 && mappedStatus == -4)
+        {
+            _logger.LogWarning(
+                "Order {OrderId}: refusing to overwrite Done (5) with Archived (-4) for unrecognised external status {RawStatus}. Keeping local state.",
+                localOrder.Id, externalOrder.Content.status);
+            return localOrder;
+        }
+
+        localOrder.Status = mappedStatus;
 
         if (currentStatus != localOrder.Status)
             localOrder.StatusHistoryJson = [.. localOrder.StatusHistoryJson, new StatusHistory { Status = localOrder.Status, StatusDate = DateTimeOffset.UtcNow }];
