@@ -347,8 +347,6 @@ namespace TJConnector.StateSystem.Services.Implementation
                     _logger.LogError($"Failed to process code application. Status code: {response.StatusCode}, Message: {errorResponse?.message}");
                     return new CustomResult<ProcessResponse> { Success = false, Message = errorResponse?.message, StatusCode = errorResponse?.statusCode };
                 }
-                string mmm = await response.Content.ReadAsStringAsync();
-                string bo = body.ToString();
                 var result = await response.Content.ReadFromJsonAsync<ProcessResponse>();
                 return new CustomResult<ProcessResponse> { Content = result, Success = true };
             }

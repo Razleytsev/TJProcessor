@@ -7,9 +7,9 @@ namespace TJConnector.Web.Services.Implementation
     public class MetadataService : IMetadataService
     {
         private readonly HttpClient _httpClient;
-        private readonly ILogger<OrderServiceWeb> _logger;
+        private readonly ILogger<MetadataService> _logger;
 
-        public MetadataService(HttpClient httpClient, ILogger<OrderServiceWeb> logger)
+        public MetadataService(HttpClient httpClient, ILogger<MetadataService> logger)
         {
             _httpClient = httpClient;
             _logger = logger;
