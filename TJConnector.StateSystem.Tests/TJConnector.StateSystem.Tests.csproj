@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TJConnector.StateSystem\TJConnector.StateSystem.csproj" />
+    <ProjectReference Include="..\TJConnector.Api\TJConnector.Api.csproj" />
+    <ProjectReference Include="..\TJConnector.Postgres\TJConnector.Postgres.csproj" />
   </ItemGroup>
 
 </Project>
