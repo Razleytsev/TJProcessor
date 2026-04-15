@@ -24,15 +24,18 @@ public class OrderService : IOrderService
     private readonly ApplicationDbContext _context;
     private readonly IExternalEmission _externalEmission;
     private readonly ILogger<OrderService> _logger;
+    private readonly IConfiguration _configuration;
 
     public OrderService(
         ApplicationDbContext context,
         IExternalEmission externalEmission,
-        ILogger<OrderService> logger)
+        ILogger<OrderService> logger,
+        IConfiguration configuration)
     {
         _context = context;
         _externalEmission = externalEmission;
         _logger = logger;
+        _configuration = configuration;
     }
 
     public async Task<IEnumerable<CodeOrder>> GetOrdersAsync()
@@ -71,7 +74,6 @@ public class OrderService : IOrderService
             3 => 3,
             4 => 4,
             5 => -3,
-            6 => 5,
             _ => -4
         };
 
@@ -188,7 +190,13 @@ public class OrderService : IOrderService
             productUuid = order.ProductUuid,
             markingLineUuid = order.MarkingLineUuid,
             factoryUuid = order.FactoryUuid,
-            Type = (order.Type == 3 ? (sbyte)0 : order.Type)
+            Type = (order.Type == 3 ? (sbyte)0 : order.Type),
+            format = order.Type switch
+            {
+                0 => _configuration.GetValue<int?>("TJConnection:EmissionCodeFormat:Pack"),
+                1 => _configuration.GetValue<int?>("TJConnection:EmissionCodeFormat:Bundle"),
+                _ => null
+            }
         };
 
         var result = order.Type == 3
