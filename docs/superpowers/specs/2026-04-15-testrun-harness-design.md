@@ -28,21 +28,57 @@ Confirmed by user's message:
 > 4. Use any order to send application.  
 > 5. Send aggregation bundles to sscc.
 
-Expanded into the real API sequence (each external call is a proper `CustomHttpClient` round-trip with Polly resilience):
+### Emission flow — CURRENT reality (2026-04-15, user-verified)
+
+The marking authority has simplified emission statuses down to only two active values:
+
+- **Status `1`** — after `CreateCodeEmission` / `CreateContainerEmission` returns, the document is at status 1 and can be processed immediately. No poll loop needed after creation.
+- **Status `6`** — after `ProcessCodeEmission` / `ProcessContainerEmission` returns, the document transitions to status 6 and codes are downloadable.
+
+Flow per emission:
+1. `CreateCodeEmission` → receive uuid (document is status 1)
+2. `ProcessCodeEmission` with that uuid → external moves it to status 6
+3. `GetEmissionInfo` — poll until `status == 6` (usually immediate, but bounded retry for safety)
+4. `GetCodesFromEmission` → receive codes
+
+For mastercase, same shape but with `CreateContainerEmission` / `ProcessContainerEmission` / `GetContainerEmissionInfo` / `GetCodesFromContainerEmission` and the simplified body described in the next section.
+
+### Application flow — UNCHANGED (mirrors existing `Transit/5 ApplicationStatusConsumer.cs`)
+
+1. `CreateCodeApplication` → receive uuid (document typically at status 1 = "approved, ready to process")
+2. Poll `GetCodeApplicationInfo`:
+   - `status == 1` → call `ProcessCodeApplication`, then keep polling
+   - `status == 3` → external still processing, keep polling (linear backoff)
+   - `status == 5` → ready/done, proceed to next stage
+   - `status in {0, 2, 4}` → fail
+3. `ProcessCodeApplication` is called exactly once (when we first see status 1)
+
+### Aggregation flow — UNCHANGED (mirrors existing `Transit/8 AggregationStatusConsumer.cs`)
+
+Same shape as application, but with `ContainerOperation`, `ContainerOperationCheck`, `ContainerOperationProcess`.
+
+1. `ContainerOperation` → receive uuid
+2. Poll `ContainerOperationCheck`:
+   - `status == 1` → call `ContainerOperationProcess`, then keep polling
+   - `status == 3` → still processing, keep polling
+   - `status == 5` → reported (terminal success)
+   - `status in {0, 2, 4}` → fail
+
+### Stage summary
 
 | Stage | What happens | External endpoints hit |
 |:---:|:---|:---|
-| 1 Pack codes | Create pack emission → poll until ready → process → download codes | `CreateCodeEmission` (type=0, format=0), `GetEmissionInfo`, `ProcessCodeEmission`, `GetCodesFromEmission` |
-| 2 Bundle codes | Same shape, for bundles | `CreateCodeEmission` (type=1, format=1), `GetEmissionInfo`, `ProcessCodeEmission`, `GetCodesFromEmission` |
-| 3 Mastercase SSCC | Same shape, for the single SSCC | `CreateContainerEmission` (type=0, productUuid=null), `GetContainerEmissionInfo`, `ProcessContainerEmission`, `GetCodesFromContainerEmission` |
-| 4 Application | Assemble pack→bundle mapping, submit, poll, process | `CreateCodeApplication`, `GetCodeApplicationInfo`, `ProcessCodeApplication` |
-| 5 Aggregation | Bundles → SSCC, submit, poll, process | `ContainerOperation`, `ContainerOperationCheck`, `ContainerOperationProcess` |
+| 1 Pack codes | Create pack emission → process → poll until status 6 → download | `CreateCodeEmission` (type=0, format=0), `ProcessCodeEmission`, `GetEmissionInfo`, `GetCodesFromEmission` |
+| 2 Bundle codes | Same, type=1, format=1 | `CreateCodeEmission` (type=1, format=1), `ProcessCodeEmission`, `GetEmissionInfo`, `GetCodesFromEmission` |
+| 3 Mastercase SSCC | Create (minimal body), process, poll, download | **NEW** `CreateContainerEmissionMinimal({codesCount:1, type:0})`, `ProcessContainerEmission`, `GetContainerEmissionInfo`, `GetCodesFromContainerEmission` |
+| 4 Application | Submit, poll, process-on-status-1, poll until status 5 | `CreateCodeApplication`, `GetCodeApplicationInfo`, `ProcessCodeApplication` |
+| 5 Aggregation | Submit, poll, process-on-status-1, poll until status 5 | `ContainerOperation`, `ContainerOperationCheck`, `ContainerOperationProcess` |
 
-Every service method above already exists in `IExternalEmission` and `IExternalContainer` and works today — no new HTTP plumbing.
+Every service method above already exists in `IExternalEmission` and `IExternalContainer` EXCEPT the new minimal container-emission method — see next section.
 
 ## User flow
 
-1. User navigates to `/test-run` (new nav entry added under "Submission Requests" and "Product").
+1. User navigates to `/test-run` directly via URL. **The page is NOT added to `NavMenu.razor`** — it's accessible by full URL only so casual users don't stumble into it. Availability is further gated by an `appsettings` flag (see config section).
 2. Form at the top of the page:
    - **Pack GTIN** — autocomplete dropdown from `Products` table (same control as existing Batches modal).
    - **Bundle GTIN** — autocomplete dropdown, same control.
@@ -119,6 +155,24 @@ public class TestRunPhaseLog {
 EF config mirrors the existing `CodeOrder` / `Package` pattern: JSONB columns via Newtonsoft, `RecordDate` default `NOW()`. Config file: `TJConnector.Postgres/Configurations/TestRunConfiguration.cs`.
 
 `EnsureCreated()` in `Program.cs` will pick up the new table automatically in dev. No migration file unless user wants explicit migration for prod.
+
+### New DTO: minimal container emission body
+
+User-confirmed: the container emission endpoint `container/emission` accepts the body `{"codesCount": 3, "type": 0}` — nothing else. The existing `CreateContainerEmission(EmissionCreateRequest)` sends extra fields (productUuid, markingLineUuid, factoryUuid, format) which may be tolerated but are not part of the spec. **We leave that existing method untouched** to avoid regressing production code, and add a new minimal DTO + method used only by the test harness:
+
+```csharp
+// TJConnector.StateSystem/Model/ExternalRequests/Container/ContainerEmissionCreateRequest.cs
+public class ContainerEmissionCreateRequest
+{
+    public int codesCount { get; set; }
+    public sbyte type { get; set; } = 0;
+}
+
+// Added to IExternalEmission (container emissions live in the emission service, not the container service)
+Task<CustomResult<DocumentCreateResponse>> CreateContainerEmissionMinimal(ContainerEmissionCreateRequest body);
+```
+
+Implementation mirrors the existing `CreateContainerEmission` but posts `ContainerEmissionCreateRequest` instead.
 
 ## Architecture — MassTransit consumer chain
 
@@ -249,30 +303,33 @@ const int POLL_BACKOFF_SECONDS = 6;  // first delay, grows linearly up to 60s
 
 Matches the existing `ApplicationStatusConsumer` / `AggregationStatusConsumer` rhythm.
 
-### External ready/fail status values
-
-**CRITICAL GAP** — these are the constants the poll loops compare against. They depend on the **new** external marking authority status scheme that triggered the session's earlier regression. My defaults:
+### External ready/fail status values — USER-CONFIRMED (2026-04-15)
 
 ```csharp
-// Emission flow (CreateCodeEmission, CreateContainerEmission)
-const int EXT_EMISSION_READY = 4;          // per user's prior message: "Success was 6 before, is 4 now"
-static int[] EXT_EMISSION_POLL_AGAIN = [1, 3];  // approved, processing — keep polling
-static int[] EXT_EMISSION_FAIL       = [0, 2];  // not approved, archived — stop
+public static class TestRunStatusContract
+{
+    // ─── Emission (packs, bundles, mastercase) ───
+    // Only two active statuses: 1 after create, 6 after process.
+    public const int EmissionAfterCreate  = 1;  // expected right after CreateCodeEmission returns
+    public const int EmissionReady        = 6;  // expected after ProcessCodeEmission completes
+    public static readonly int[] EmissionPollAgain = []; // transition is immediate; no intermediate "still working" state
+    public static readonly int[] EmissionFail      = []; // any non-{1,6} value at the wrong moment is treated as "unexpected"
 
-// Application flow (CreateCodeApplication + GetCodeApplicationInfo)
-// Mirrors the existing ApplicationStatusConsumer's interpretation until user confirms otherwise.
-const int EXT_APPLICATION_READY      = 5;   // "ready, next step" in ApplicationStatusConsumer:85
-static int[] EXT_APPLICATION_POLL_AGAIN = [1, 3];
-static int[] EXT_APPLICATION_FAIL       = [0, 2, 4];
+    // ─── Application (unchanged, mirrors ApplicationStatusConsumer.cs:42-92) ───
+    public const int ApplicationApproved  = 1;  // approved, call Process now
+    public const int ApplicationProcessing= 3;  // still working, poll again
+    public const int ApplicationReady     = 5;  // ready/done, proceed to aggregation
+    public static readonly int[] ApplicationFail = [0, 2, 4]; // saved-error, archived, failed
 
-// Aggregation flow (ContainerOperation + ContainerOperationCheck)
-// Mirrors AggregationStatusConsumer.
-const int EXT_AGGREGATION_READY      = 5;
-static int[] EXT_AGGREGATION_POLL_AGAIN = [1, 3];
-static int[] EXT_AGGREGATION_FAIL       = [0, 2, 4];
+    // ─── Aggregation (unchanged, mirrors AggregationStatusConsumer.cs:38-88) ───
+    public const int AggregationApproved  = 1;  // approved, call Process now
+    public const int AggregationProcessing= 3;  // still working, poll again
+    public const int AggregationTerminal  = 5;  // reported — final success
+    public static readonly int[] AggregationFail = [0, 2, 4];
+}
 ```
 
-All these are centralised in a single `TestRunStatusContract` static class so the user can correct them in one place once the external team's status table is known. See questions Q1–Q4 in **Inputs required from you** at the bottom of this doc.
+The emission flow under the new contract is deterministic — after `ProcessCodeEmission` the status should flip to 6 on the next `GetEmissionInfo` call. The poll loop is kept in case of a network/timing hiccup but with a short cap (5 attempts × 2 s linear backoff, not the 20×exponential used for application/aggregation).
 
 ## API endpoints
 
@@ -303,7 +360,7 @@ public class TestRunCreateForm {
 
 `TestRunDto` (goes in `SharedLibrary/Models`) — projection of `TestRun` with product GTINs resolved into strings for easy display.
 
-## Reprocess semantics — clone forward
+## Reprocess semantics — clone forward (with parent history)
 
 "Reprocess from stage N" does **not** mutate the original run. It:
 
@@ -312,11 +369,12 @@ public class TestRunCreateForm {
    - `ClonedFromTestRunId = original.Id`
    - `ClonedFromStage = N`
    - Prior stages' outputs **copied from the original** (emission guids, codes, SSCC) so stages < N are marked OK without re-minting.
-   - Stage set to N-1 so the first published message will advance into stage N.
+   - `PhaseHistory` **deep-copied from the parent** up through the last OK entry of stage N-1 (per user: "Clone, please, don't start fresh"). A separator entry is appended to the copy: `{ Phase: 0, Name: "— cloned from run #X at stage N —", Outcome: "OK" }`.
+   - `Stage` set to N-1 so the first published message advances into stage N.
 2. Publishes the stage N message.
 3. Returns the new run's `Id`.
 
-Rationale: the external marking authority mints real codes on every emission call. Retrying stage 2 in place would mint a second batch of bundle codes, doubling the consumption. Cloning forward reuses the already-minted artifacts from the failed parent.
+Rationale: the external marking authority mints real codes on every emission call. Retrying stage 2 in place would mint a second batch of bundle codes, doubling the consumption. Cloning forward reuses the already-minted artifacts from the failed parent and preserves the full audit trail.
 
 UI makes this visible: cloned runs show a "Cloned from #123 at stage 3" badge and link back to the parent.
 
@@ -386,58 +444,51 @@ Same disciplined pattern the existing consumers use:
 - Export/download of the generated codes as a file — the raw arrays are visible in the JSON response blocks; if you want a download button that's a 15-minute follow-up.
 - Retention / cleanup — old runs accumulate. If you want auto-deletion of runs > 30 days, that's a follow-up.
 
-## Assumptions made (override any of these)
+## Decisions (all confirmed by user 2026-04-15)
 
-| # | Assumption | Why I chose it |
+| # | Decision | Source |
 |:---:|:---|:---|
-| A1 | Separate `TestRun` entity, not a flag on `Package` / `CodeOrder` | User said "different page" — dedicated entity keeps test traffic out of production reports and allows cleaner reprocess-clone semantics |
-| A2 | MassTransit consumer chain, not a hosted service or long-running endpoint | Matches every existing batch/package flow in the codebase |
-| A3 | 5 consumers, one per stage, each driving create→poll→process→download internally | Compromise between granularity and consumer-file sprawl; each consumer is ~150 lines |
-| A4 | Reprocess clones forward, not in-place retry | In-place retry would double-mint codes on the real marking authority |
-| A5 | Mastercase emission uses `CreateContainerEmission` with `productUuid=null` | User said "mastercase doesn't need gtin"; `CreateContainerEmission` takes a nullable productUuid |
-| A6 | Pack `format=0`, bundle `format=1` | Matches the config we already added in `TJConnection:EmissionCodeFormat` |
-| A7 | `applicationDate` and `productionDate` both set to `DateTimeOffset.UtcNow` (no -4h shift) | Test runs are controlled; consistent UTC is the cleanest default. If the real chain needs the -4h shift, we can copy that behavior — see open question |
-| A8 | `type=2` on application body, `result=0`, matches existing `EmissionServiceConsumer` | Known-working values from the production flow |
-| A9 | Factory / marking line / location selectable on the form, auto-select if only one | Matches existing batch modal UX; lets test runs target different env config |
-| A10 | Confirm switch required before Start (explicit "I know this mints real codes") | Safety — the real marking authority has no rollback |
-| A11 | No "multiple of 1000" constraint on the counts | Test runs are typically small (e.g. 4 packs × 2 bundles = 8 codes). If the marking authority rejects small counts, we'll learn that on the first test and can adjust. **Open for confirmation** |
-| A12 | Polling: linear backoff 6s × attempt, cap 60s, max 20 attempts | Mirrors `ApplicationStatusConsumer` |
-| A13 | `EXT_READY_STATUS = 4` for emission poll | User said so for the emission creation flow. **Application and aggregation ready statuses are unknown** — see open question |
-| A14 | Page lives at `/test-run`, added to `NavMenu.razor` below "Product" | Consistent with existing nav style |
-| A15 | Auto-refresh interval 2 s, stops when all visible runs are terminal | Matches Batches.razor pattern |
-| A16 | Phase history stored as JSONB array on the `TestRun` row (not a separate table) | Matches `CodeOrder.StatusHistoryJson` pattern; append-only works fine in JSONB |
-| A17 | Reprocess clone copies prior stage outputs byte-for-byte, no re-verification | If the parent succeeded through stage N, stage N's output is valid; re-verifying would waste external API quota |
-| A18 | Consumers use `Task.Delay` for polling inside the consume method, not MassTransit's scheduled redelivery | Simpler; total consume time is bounded by MAX_POLL_ATTEMPTS × 60s ≈ 20 min per stage, well under any reasonable consumer deadline |
-| A19 | Cancellation is cooperative — consumer checks `Stage < 0` at each phase boundary | No hard kill mid-phase because we don't want to abandon a half-committed external call |
-| A20 | No SignalR wiring for live updates — UI polls via HTTP | SignalR hub is commented out in the API per CLAUDE.md; HTTP polling at 2s feels instant enough for a test page |
+| D1 | Separate `TestRun` entity, not a flag on `Package` / `CodeOrder` | Spec — "different page" |
+| D2 | MassTransit consumer chain, not hosted service | Matches existing `Transit/*` patterns |
+| D3 | 5 consumers, one per stage | Consistent granularity |
+| D4 | Reprocess clones forward with **parent phase-history copied** | User: "Clone, please, don't start fresh" |
+| D5 | Mastercase uses NEW minimal DTO `ContainerEmissionCreateRequest {codesCount, type}` — no productUuid, no factory, no marking line, no format | User: "complete body is {codesCount: 3, type: 0}" |
+| D6 | Pack `format=0`, bundle `format=1` on `EmissionCreateRequest` | Reuses existing `TJConnection:EmissionCodeFormat` config |
+| D7 | `applicationDate` and `productionDate` both `DateTimeOffset.UtcNow` (no -4h shift) | User: "Use UtcNow (no shift)" |
+| D8 | `type=2`, `result=0` on application body | Known-working values from existing `EmissionServiceConsumer` |
+| D9 | Factory / marking line / location selectable on form, auto-select if only one | Matches existing batch modal UX |
+| D10 | Confirm switch required before Start | Safety — real marking authority has no rollback |
+| D11 | Count inputs accept any value ≥ 1; no multiple-of-1000 constraint | User: "For test we need very small numbers" |
+| D12 | **Emission polling:** after `ProcessCodeEmission`, poll `GetEmissionInfo` until `status == 6`, max 5 attempts × 2 s (linear). | User: "We only have two statuses now. Send emission request, check if status 1, process request, check if status 6 then we can download codes." |
+| D13 | **Application polling:** unchanged — mirrors `ApplicationStatusConsumer`: status 1 → call Process, status 3 → keep polling, status 5 → ready, {0,2,4} → fail. Linear 6 s × attempt, cap 60 s, max 20 attempts. | User: "Application and aggregation didn't change, failed/keep polling didn't change" |
+| D14 | **Aggregation polling:** unchanged — mirrors `AggregationStatusConsumer`: same shape as application. | Same |
+| D15 | Page lives at `/test-run`, **NOT added to NavMenu**, gated by `TestRun:Enabled` config flag | User: "don't show it in nav menu, we just need to go there using full url" + "add to appsettings availability of this page" |
+| D16 | Auto-refresh interval 2 s, stops when all visible runs are terminal | Matches Batches.razor pattern |
+| D17 | Phase history stored as JSONB array on the `TestRun` row | Matches `CodeOrder.StatusHistoryJson` pattern |
+| D18 | Reprocess clone copies parent stage outputs byte-for-byte, no re-verification | If parent succeeded through stage N, stage N's output is valid |
+| D19 | Consumers use `Task.Delay` for polling inside the consume method | Simpler than MassTransit scheduled redelivery |
+| D20 | Cancellation is cooperative — consumer checks `Stage < 0` at each phase boundary | No hard kill mid-phase |
+| D21 | No SignalR wiring — UI polls via HTTP | SignalR hub is commented out in API |
+| D22 | No retention / cleanup of old `TestRun` rows | User: "I don't care about old testrun rows let them pile up" |
+| D23 | No explicit auth beyond the `TestRun:Enabled` appsettings flag + confirm switch | User: "about UX: everything is fine" |
 
-## Inputs required from you
+### New config key
 
-These are the things I cannot answer from the codebase alone. Everything in the spec builds on a default for each, but I'd rather have your answer before the code is written than discover I was wrong on the real system.
+```json
+"TestRun": {
+  "Enabled": true
+}
+```
 
-| # | Question | My default (if you don't answer) |
-|:---:|:---|:---|
-| Q1 | **What external status value means "ready to process / download" for EMISSION now?** I guessed `4` from our prior conversation. Confirm or correct. | `EXT_READY_STATUS = 4` |
-| Q2 | **What external status value means "ready to process" for APPLICATION now?** (`CreateCodeApplication` returns a doc uuid, then we poll `GetCodeApplicationInfo` until a certain status, then call `ProcessCodeApplication`.) Right now `ApplicationStatusConsumer` treats external 5 as success ("ready, trigger aggregation"). Still true? | Assume same as emission: `4` |
-| Q3 | **What external status value means "done" for AGGREGATION now?** (`ContainerOperation` → poll `ContainerOperationCheck` → `ContainerOperationProcess` → poll again.) `AggregationStatusConsumer` treats external 5 as terminal success. Still true? | Assume `5` |
-| Q4 | **What external status value means "failed" across all three?** There's no single FAIL status in the current switches — each consumer treats specific negative outcomes (0, 2, 4 in the application switch) as failures. For the test harness I need to distinguish "poll again" from "give up." | Treat any value in `{0, 2}` as FAIL; keep polling on `{1, 3}`; stop on `{4, 5}` |
-| Q5 | **Does the marking authority accept `codesCount < 1000`?** The existing batch modal enforces a multiple-of-1000 constraint. Is that a business rule or an API constraint? Test runs need to be small (e.g. 6 codes) to be practical. | Allow any count ≥ 1 |
-| Q6 | **`applicationDate` timezone:** `EmissionServiceConsumer.cs:85` uses `UtcNow.AddHours(-4)`. The test harness should either mirror that exact behavior or use plain `UtcNow`. Which? | Use `UtcNow` (no shift). |
-| Q7 | **Does `CreateContainerEmission` require `productUuid=null` or is it acceptable to omit the field entirely?** You confirmed mastercase doesn't need a GTIN — I'll send `productUuid=null` and rely on `[JsonIgnore(WhenWritingNull)]` (already in place for `format`). Confirm that the serializer emits/omits null the way the external API expects. | Send `null` with `[JsonIgnore(WhenWritingNull)]` |
-| Q8 | **Does the test page require authentication?** The existing pages don't — there's no auth middleware in `TJConnector.Api/Program.cs` or `TJConnector.Web/Program.cs`. If you want this gated because it mints real codes, say so. | No auth beyond the confirm-switch |
-| Q9 | **`TestRun.User` field — should it default to a fixed value, pull from Windows identity, or require manual input?** | Free-text input field in the form, required, min 2 chars |
-| Q10 | **Three emission types — can I assume the same `factoryUuid` / `markingLineUuid` work for pack, bundle, AND mastercase emissions?** Or does mastercase need a different marking line? | Same for all three |
-| Q11 | **Count semantics — "packs per bundle × bundles per container" is the pack emission count. But do you want a separate "bundle count" field too, in case you want more bundles than containers?** I'm interpreting your spec as exactly one container, exactly `bundlesPerContainer` bundles, exactly `packsPerBundle × bundlesPerContainer` packs. | Exactly one container per run |
-| Q12 | **Should reprocess-forward copy the StatusHistory from the parent or start fresh?** I'm going with fresh — the new run's history shows only what the clone did, and the "Cloned from #X at stage N" badge links to the parent for the earlier history. | Start fresh |
-| Q13 | **Retention:** any concerns about TestRun rows piling up, or is housekeeping not a priority right now? | Ignore, no cleanup in v1 |
-| Q14 | **Nav label:** the new page should show up as "Test Run" in NavMenu? "Contour Test"? Other? | "Test Run" |
+Added under the root of `appsettings.json`. If `false`, the API's `POST /api/testrun` and `GET /api/testrun/*` endpoints return 404. Also, the Web page's `@page "/test-run"` checks the config via an injected `IConfiguration` at render time and shows a "Test Run is disabled in this environment" message if off. Default in the committed `appsettings.json` is `true` for dev; production deploys should set it to `false` unless explicitly needed.
 
 ## Open risks
 
-1. **External status unknowns.** Q1–Q4 above. If my defaults are wrong in any of the three flows, the first test run will fail with a FAIL phase log showing the raw response — that's actually a useful diagnostic, but it means the first run will fail by design until the constants are corrected.
-2. **Time budget.** Five stages × up to 20 minutes max per stage = theoretical 100 minutes per run. Realistic is 1–5 minutes. If any stage genuinely hangs at the external system, the test page will show "polling attempt N" indefinitely until the 20-attempt cap hits. Acceptable for a test tool.
-3. **Concurrent runs** sharing the same `factoryUuid` — no coordination. If two runs start simultaneously the external system receives two parallel emission requests. The marking authority should handle that fine, but if there's a per-factory serialization requirement I don't know about, v1 will tangle. Mitigation: button is disabled while a run with terminal-not-reached state exists for the same user, but I'm leaving that out of v1 unless you ask.
-4. **EF migration.** I'm assuming `EnsureCreated()` in dev is fine. For prod, a manual migration is needed. I'll call this out in the plan.
+1. **Emission polling may still need tuning.** D12 assumes the post-process status flip is near-instant. If it actually takes a second or two in production, the 5-attempt × 2 s = 10 s cap should be enough; if not, we'll tune the constants without touching logic.
+2. **Application / aggregation mapping stale.** User confirmed these are unchanged "as far as I understand" and we'll verify later. If they've changed quietly, the first real test run will show the raw response in the phase log — diagnostic gold.
+3. **Time budget.** Application + aggregation stages with full linear-backoff polling = up to ~20 minutes per stage in the worst case. Realistic is seconds. If a stage genuinely hangs, the page shows "polling attempt N" until the 20-attempt cap.
+4. **Concurrent runs** sharing the same `factoryUuid` — no coordination. The marking authority should handle parallel emission requests fine, but if there's a per-factory serialization requirement, v1 will tangle. Deferred.
+5. **EF migration.** `EnsureCreated()` in dev handles the new table automatically. Production deploys need a manual migration; the plan documents this.
 
 ## Rough effort estimate
 
@@ -457,4 +508,4 @@ Slightly higher than my earlier 5–7h estimate because I've added the reprocess
 
 ## Post-approval next step
 
-Invoke the **superpowers:writing-plans** skill to break this design into a tasked TDD implementation plan. The plan will go to `docs/superpowers/plans/2026-04-15-testrun-harness.md`. No code is written until you approve both this spec AND the plan.
+Implementation plan: `docs/superpowers/plans/2026-04-15-testrun-harness.md`. All decisions are user-confirmed (see Decisions table above); spec and plan are executed autonomously per user's 2026-04-15 instruction to "do everything to the end".
