@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using TJConnector.Api.Hubs;
 using TJConnector.Postgres;
 using TJConnector.Postgres.Entities;
+using TJConnector.StateSystem.Helpers;
 using TJConnector.StateSystem.Model.ExternalRequests.Container;
 using TJConnector.StateSystem.Model.ExternalRequests.MarkingCode;
 using TJConnector.StateSystem.Services.Contracts;
@@ -48,9 +49,32 @@ public class StateCreateAggregation : IConsumer<StateCreateAggregationBody7>
             return;
         }
 
+        var bundleCodes = new List<string>(package.Content.Count);
+        var badSamples = new List<string>();
+        foreach (var entry in package.Content)
+        {
+            if (!GS1CodeHelper.TryInsertGroupSeparator(entry.Bundle, out var bundleWithGs))
+            {
+                if (badSamples.Count < 5) badSamples.Add(entry.Bundle);
+                continue;
+            }
+            bundleCodes.Add(bundleWithGs);
+        }
+
+        if (badSamples.Count > 0)
+        {
+            var sample = string.Join(", ", badSamples);
+            _logger.LogError("Malformed bundle codes for package {Sscc}: {Samples}", package.SSCCCode, sample);
+            package.Comment = $"Malformed bundle codes (samples): {sample}";
+            package.AddStatus(-8);
+            _context.Entry(package).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+            return;
+        }
+
         var aggregationBody = new ContainerOperationCreateRequest
         {
-            codes = package.Content.Select(x => x.Bundle).ToArray(),
+            codes = bundleCodes.ToArray(),
             containerCode = package.SSCCCode,
             locationUuid = location.ExternalUid,
             transferCodes = new string[0],
