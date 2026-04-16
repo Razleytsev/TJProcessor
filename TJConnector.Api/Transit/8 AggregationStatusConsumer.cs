@@ -49,6 +49,7 @@ public class StateAggregationStatus : IConsumer<StateAggregationStatusBody8>
                 package.AddStatus(10);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
+                await Task.Delay(5000);
                 await container.Publish(new StateProcessAggregationBody9 { Container = package });
                 return;
             case 2:

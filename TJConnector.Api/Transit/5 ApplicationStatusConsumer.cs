@@ -53,6 +53,7 @@ public class StateApplicationStatus : IConsumer<StateApplicationStatusBody5>
                 package.AddStatus(6);
                 _context.Entry(package).State = EntityState.Modified;
                 await _context.SaveChangesAsync();
+                await Task.Delay(5000);
                 await container.Publish(new StateApplicationProcessBody6 { Container = package });
                 return;
             case 2:

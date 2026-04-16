@@ -78,6 +78,7 @@ public class OrderService : IOrderService
             3 => 3,
             4 => 4,
             5 => -3,
+            6 => 4,
             _ => -4
         };
 
