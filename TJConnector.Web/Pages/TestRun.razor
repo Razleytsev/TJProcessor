@@ -9,6 +9,7 @@
 @inject IProductService ProductService
 @inject IMetadataService MetadataService
 @inject IConfiguration Configuration
+@inject HttpClient Http
 
 <div class="page-root-flex" style="padding:12px;gap:12px;overflow-y:auto;">
 
@@ -241,6 +242,46 @@
                 </table>
             }
         </div>
+
+        <!-- ── External DB Test ────────────────────────────────── -->
+        <div class="card" style="padding:12px;background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;margin-top:16px;">
+            <h6>External Database Connection Test</h6>
+            <div class="text-xs text-muted" style="margin-bottom:8px;">
+                Test SQL Server connection by querying container hierarchy. The MC number does not need to be valid for this market — the query will execute and return whatever the external DB has (or an error if the connection fails).
+            </div>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <label class="form-label form-label-sm">Mastercase Number</label>
+                    <input class="form-control form-control-sm" placeholder="Enter MC number…" @bind="dbTestMcNumber" />
+                </div>
+                <div class="col-md-6 d-flex align-items-end gap-2">
+                    <button class="btn btn-sm btn-outline-primary"
+                            disabled="@(string.IsNullOrWhiteSpace(dbTestMcNumber) || dbTestRunning)"
+                            @onclick="RunDbTestContent">
+                        @(dbTestRunning ? "Testing…" : "Test Content Query")
+                    </button>
+                    <button class="btn btn-sm btn-outline-primary"
+                            disabled="@(string.IsNullOrWhiteSpace(dbTestMcNumber) || dbTestRunning)"
+                            @onclick="RunDbTestInfo">
+                        @(dbTestRunning ? "Testing…" : "Test Info Query")
+                    </button>
+                </div>
+            </div>
+            @if (dbTestResult != null)
+            {
+                <div class="mt-2" style="font-size:11px;">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <strong>@dbTestLabel</strong>
+                        <span class="badge @(dbTestSuccess ? "bg-success" : "bg-danger")">@(dbTestSuccess ? "OK" : "FAIL")</span>
+                        @if (dbTestDurationMs.HasValue)
+                        {
+                            <span class="text-muted">@(dbTestDurationMs)ms</span>
+                        }
+                    </div>
+                    <pre style="font-size:10px;white-space:pre-wrap;max-height:300px;overflow-y:auto;background:#fff;padding:8px;border:1px solid #dee2e6;border-radius:4px;">@dbTestResult</pre>
+                </div>
+            }
+        </div>
     }
 </div>
 
@@ -395,4 +436,60 @@
         0 => "bg-light text-dark",
         _ => "bg-primary"
     };
+
+    // ── External DB Test ─────────────────────────────────────────────────
+    private string dbTestMcNumber = string.Empty;
+    private bool dbTestRunning;
+    private string? dbTestResult;
+    private string? dbTestLabel;
+    private bool dbTestSuccess;
+    private long? dbTestDurationMs;
+
+    private async Task RunDbTestContent()
+    {
+        await RunDbTest("Content Query", async () =>
+        {
+            var resp = await Http.GetAsync($"api/mccontent/{Uri.EscapeDataString(dbTestMcNumber.Trim())}");
+            return await resp.Content.ReadAsStringAsync();
+        });
+    }
+
+    private async Task RunDbTestInfo()
+    {
+        await RunDbTest("Info Query", async () =>
+        {
+            var resp = await Http.PostAsJsonAsync("api/mcinfo", new[] { dbTestMcNumber.Trim() });
+            return await resp.Content.ReadAsStringAsync();
+        });
+    }
+
+    private async Task RunDbTest(string label, Func<Task<string>> action)
+    {
+        dbTestRunning = true;
+        dbTestLabel = label;
+        dbTestResult = null;
+        dbTestSuccess = false;
+        dbTestDurationMs = null;
+
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var result = await action();
+            sw.Stop();
+            dbTestDurationMs = sw.ElapsedMilliseconds;
+            dbTestResult = result;
+            dbTestSuccess = true;
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            dbTestDurationMs = sw.ElapsedMilliseconds;
+            dbTestResult = ex.Message;
+            dbTestSuccess = false;
+        }
+        finally
+        {
+            dbTestRunning = false;
+        }
+    }
 }
