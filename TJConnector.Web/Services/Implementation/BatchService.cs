@@ -11,6 +11,7 @@ public interface IBatchServiceWeb
     Task<FileContentResult> DownloadBatchContentAsync(int id, string user);
     Task<Batch> ProcessBatchAsync(int id);
     Task<Batch> CancelBatchAsync(int id);
+    Task<Batch> ContinueBatchAsync(int id);
     Task<Batch> CreateBatchAsync(BatchCreateForm form);
 }
 
@@ -62,6 +63,13 @@ public class BatchServiceWeb : IBatchServiceWeb
         var response = await _httpClient.PostAsJsonAsync($"api/batch/{id}/cancel", new { });
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<Batch>() ?? throw new InvalidOperationException("Failed to cancel batch.");
+    }
+
+    public async Task<Batch> ContinueBatchAsync(int id)
+    {
+        var response = await _httpClient.PostAsJsonAsync($"api/batch/{id}/continue", new { });
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<Batch>() ?? throw new InvalidOperationException("Failed to continue batch.");
     }
 
     public async Task<Batch> CreateBatchAsync(BatchCreateForm form)

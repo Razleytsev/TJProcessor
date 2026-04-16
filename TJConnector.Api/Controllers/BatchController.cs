@@ -150,6 +150,33 @@ public class BatchController : ControllerBase
         return Ok(batch);
     }
 
+    [HttpPost("{id}/continue")]
+    public async Task<IActionResult> ContinueBatch(int id)
+    {
+        var batch = await _context.Batches
+            .FirstOrDefaultAsync(b => b.Id == id);
+        if (batch == null)
+            return NotFound();
+
+        if (batch.Status != -1)
+            return BadRequest("Only canceled batches can be continued.");
+
+        var hasOrders = await _context.CodeOrders.AnyAsync(o => o.BatchId == id);
+        batch.Status = hasOrders ? 1 : 0;
+        batch.StatusHistoryJson = batch.StatusHistoryJson.Append(new StatusHistory
+        {
+            Status = batch.Status,
+            StatusDate = DateTimeOffset.UtcNow
+        }).ToArray();
+
+        await _context.SaveChangesAsync();
+        _logger.LogInformation("Batch {Id} continued with status {Status}.", id, batch.Status);
+
+        await _bus.Publish(new ProcessBatch { BatchId = batch.Id });
+
+        return Ok(batch);
+    }
+
     [HttpPost]
     public async Task<ActionResult<Batch>> CreateBatch([FromBody] BatchCreateForm formData)
     {

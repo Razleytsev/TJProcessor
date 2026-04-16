@@ -99,6 +99,11 @@
                                             <button class="btn-xs btn btn-outline-success"
                                                     @onclick="() => DownloadBatch(b)">⬇</button>
                                         }
+                                        @if (b.Status == -1)
+                                        {
+                                            <button class="btn-xs btn btn-outline-warning"
+                                                    @onclick="() => ContinueBatch(b)">Continue</button>
+                                        }
                                     </td>
                                 </tr>
                             }
@@ -142,6 +147,11 @@
                     {
                         <button class="btn btn-sm btn-outline-danger ms-auto"
                                 @onclick="() => PromptCancelBatch(selectedBatch)">Cancel Batch</button>
+                    }
+                    else if (selectedBatch.Status == -1)
+                    {
+                        <button class="btn btn-sm btn-outline-warning ms-auto"
+                                @onclick="() => ContinueBatch(selectedBatch)">Continue Batch</button>
                     }
                 }
                 else
@@ -513,6 +523,26 @@
     {
         showConfirm = false;
         if (confirmAction != null) { await confirmAction(); confirmAction = null; }
+    }
+
+    // ── Continue ──────────────────────────────────────────────────────────
+    private async Task ContinueBatch(Batch batch)
+    {
+        try
+        {
+            await BatchService.ContinueBatchAsync(batch.Id);
+            batches = await BatchService.GetBatchesAsync();
+            if (selectedBatch?.Id == batch.Id)
+            {
+                selectedBatchDto = await BatchService.GetBatchByIdAsync(batch.Id);
+                selectedBatch = batches?.FirstOrDefault(b => b.Id == batch.Id) ?? selectedBatch;
+            }
+            ShowToast($"Batch #{batch.Id} continued.", "toast-success");
+        }
+        catch
+        {
+            ShowToast("Continue failed. Try again.", "toast-error");
+        }
     }
 
     // ── Download ──────────────────────────────────────────────────────────
