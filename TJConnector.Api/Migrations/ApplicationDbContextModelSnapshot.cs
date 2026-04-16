@@ -40,7 +40,7 @@ namespace TJConnector.Api.Migrations
                     b.Property<Guid?>("ExternalGuid")
                         .HasColumnType("uuid");
 
-                    b.Property<int>("ProductId")
+                    b.Property<int?>("ProductId")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("RecordDate")
@@ -200,6 +200,9 @@ namespace TJConnector.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("Comment")
+                        .HasColumnType("text");
+
                     b.Property<string>("Content")
                         .HasColumnType("jsonb");
 
@@ -262,7 +265,6 @@ namespace TJConnector.Api.Migrations
                         .HasColumnType("jsonb");
 
                     b.Property<string>("User")
-                        .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
@@ -308,17 +310,15 @@ namespace TJConnector.Api.Migrations
             modelBuilder.Entity("TJConnector.Postgres.Entities.CodeOrder", b =>
                 {
                     b.HasOne("TJConnector.Postgres.Entities.Product", "Product")
-                        .WithMany("CodeOrders")
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .WithMany()
+                        .HasForeignKey("ProductId");
 
                     b.Navigation("Product");
                 });
 
             modelBuilder.Entity("TJConnector.Postgres.Entities.CodeOrderContent", b =>
                 {
-                    b.HasOne("TJConnector.Postgres.Entities.CodeOrder", "CodeOrder")
+                    b.HasOne("TJConnector.Postgres.Entities.CodeOrder", null)
                         .WithOne("Content")
                         .HasForeignKey("TJConnector.Postgres.Entities.CodeOrderContent", "CodeOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -329,19 +329,15 @@ namespace TJConnector.Api.Migrations
                         .HasForeignKey("TJConnector.Postgres.Entities.CodeOrderContent", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("CodeOrder");
                 });
 
             modelBuilder.Entity("TJConnector.Postgres.Entities.Package", b =>
                 {
-                    b.HasOne("TJConnector.Postgres.Entities.PackageRequest", "PackageRequest")
+                    b.HasOne("TJConnector.Postgres.Entities.PackageRequest", null)
                         .WithMany("Packages")
                         .HasForeignKey("PackageRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("PackageRequest");
                 });
 
             modelBuilder.Entity("TJConnector.Postgres.Entities.CodeOrder", b =>
@@ -352,11 +348,6 @@ namespace TJConnector.Api.Migrations
             modelBuilder.Entity("TJConnector.Postgres.Entities.PackageRequest", b =>
                 {
                     b.Navigation("Packages");
-                });
-
-            modelBuilder.Entity("TJConnector.Postgres.Entities.Product", b =>
-                {
-                    b.Navigation("CodeOrders");
                 });
 #pragma warning restore 612, 618
         }

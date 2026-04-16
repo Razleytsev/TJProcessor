@@ -17,6 +17,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     public DbSet<Package> Packages { get; set; }
     public DbSet<PackageRequest> PackageRequests { get; set; }
     public DbSet<Product> Products { get; set; }
+    public DbSet<Batch> Batches { get; set; }
+    public DbSet<TestRun> TestRuns { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

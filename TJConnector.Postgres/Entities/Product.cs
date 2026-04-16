@@ -8,7 +8,5 @@
         public string Name { get; set; } = string.Empty;
         public Guid ExternalUid { get; set; }
         public DateTimeOffset RecordDate { get; set; }
-
-        public List<CodeOrder>? CodeOrders { get; set; }
     }
 }

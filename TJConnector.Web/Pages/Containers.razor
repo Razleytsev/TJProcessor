@@ -1,106 +1,669 @@
-﻿@page "/containers"
-@using System.Net.Http.Headers
-@using System.Text
-@using System.Text.Json
+@page "/containers"
+@using TJConnector.SharedLibrary.DTOs.Forms
+@using TJConnector.Postgres.Entities
+@implements IAsyncDisposable
+@inject IPackageRequestService RequestService
+@inject IJSRuntime JSRuntime
 
-@inject HttpClient Http
-
-@functions {
-    private List<Item> Items = new();
-    private string SortColumn = "Gtin";
-    private bool SortAscending = true;
-
-    protected override async Task OnInitializedAsync()
+<!-- ── Toasts ─────────────────────────────────────────────────── -->
+<div class="toast-container">
+    @foreach (var t in toasts)
     {
-        await FetchData();
+        <div class="toast @t.CssClass">@t.Message</div>
     }
+</div>
 
-    private async Task FetchData()
-    {
-        var username = "PEpk1O-cQs6cAouT2DxMvQ-0:mar_Z4i9cHGkTFuEtQRh/0n5pg_Z4i9cHGkTFuEtQRh/0n5pg_SgR8u0vNhtxZgYGlwRmod/0Oj5LVcc4IcNCs5CpQIeRuJIPZoLhcswzUg0DELEwPxrvF9i1YrvqDJ3621JbhbA";
-
-
-        var client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.ASCII.GetBytes($"{username}")));
-        var request = new HttpRequestMessage(HttpMethod.Post, "https://pub-api.mark.tj:5230/container/report/operation/find");
-        var content = new StringContent("{\r\n    \"filters\":\r\n    {\r\n        \"factoryUuid\": [\"326e5c13-4280-4078-be01-ebed9d73716a\"]\r\n    },\r\n    \"limit\": 50,\r\n    \"offset\": 0,\r\n    \"order\": \r\n    {\r\n        \"createdAt\":\r\n        {\r\n            \"dir\" : \"DESC\"\r\n        }\r\n    }\r\n}", null, "application/json");
-        request.Content = content;
-        var response = await client.SendAsync(request);
-
-        if (response.IsSuccessStatusCode)
-        {
-            var responseContent = await response.Content.ReadAsStringAsync();
-            var apiResponse = JsonSerializer.Deserialize<ApiResponse>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-            if (apiResponse != null)
-            {
-                Items = apiResponse.Items;
-                SortItems();
-            }
-        }
-    }
-
-    private void SortItems()
-    {
-        Items = SortAscending
-            ? Items.OrderBy(item => item.GetType().GetProperty(SortColumn)?.GetValue(item, null)).ToList()
-            : Items.OrderByDescending(item => item.GetType().GetProperty(SortColumn)?.GetValue(item, null)).ToList();
-    }
-
-    private void ChangeSortColumn(string column)
-    {
-        if (SortColumn == column)
-        {
-            SortAscending = !SortAscending;
-        }
-        else
-        {
-            SortColumn = column;
-            SortAscending = true;
-        }
-        SortItems();
-    }
-
-    public class ApiResponse
-    {
-        public List<Item> Items { get; set; } = new();
-        public int Total { get; set; }
-    }
-
-    public class Item
-    {
-        public string uuid { get; set; }
-        public string containerCode { get; set; }
-        public int containerType { get; set; }
-        public string locationName { get; set; }
-        public string finishedAt { get; set; }
-        public int codesCount { get; set; }
-    }
+<!-- ── Package detail modal ──────────────────────────────────── -->
+@if (detailPackage != null)
+{
+    <div class="modal-overlay" @onclick="ClosePackageDetail">
+        <div class="modal-dialog-box" @onclick:stopPropagation="true">
+            <div class="modal-dialog-header">
+                <span class="modal-dialog-title">Package #@detailPackage.Id</span>
+                <button class="modal-close-btn" @onclick="ClosePackageDetail">×</button>
+            </div>
+            <div class="modal-dialog-body">
+                <dl class="pkg-detail-grid">
+                    <dt>Code</dt>         <dd>@detailPackage.Code</dd>
+                    <dt>SSCC Code</dt>    <dd>@(detailPackage.SSCCCode ?? "—")</dd>
+                    <dt>Status</dt>
+                    <dd>
+                        @{ var (pc, pl) = PkgStatusInfo(detailPackage.Status); }
+                        <span class="badge @pc">@pl</span>
+                        &nbsp;<span class="text-xs text-muted">(@detailPackage.Status)</span>
+                    </dd>
+                    <dt>Content App GUID</dt>  <dd class="cell-guid">@(detailPackage.ContentApplicationGuid?.ToString() ?? "—")</dd>
+                    <dt>Aggregation GUID</dt>  <dd class="cell-guid">@(detailPackage.AggregationGuid?.ToString() ?? "—")</dd>
+                    <dt>Comment</dt>      <dd>@(detailPackage.Comment ?? "—")</dd>
+                    <dt>Record Date</dt>  <dd>@detailPackage.RecordDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</dd>
+                </dl>
+                @if (detailPackage.StatusHistory?.Length > 0)
+                {
+                    <div class="mt-2">
+                        <small class="text-muted fw-semibold">Status History</small>
+                        <table class="table table-sm table-xs-font mt-1">
+                            <thead><tr><th>Status</th><th>Date</th></tr></thead>
+                            <tbody>
+                                @foreach (var h in detailPackage.StatusHistory.OrderByDescending(x => x.StatusDate))
+                                {
+                                    <tr>
+                                        <td>@GetStatusLabel(h.Status)</td>
+                                        <td>@h.StatusDate.ToLocalTime().ToString("dd.MM.yy HH:mm:ss")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            <div class="modal-dialog-footer">
+                @if (detailPackage.Status < 0)
+                {
+                    <button class="btn btn-sm btn-warning" disabled="@isReprocessingSingle"
+                            @onclick="ReprocessSinglePackage">
+                        @(isReprocessingSingle ? "Reprocessing…" : "Reprocess")
+                    </button>
+                }
+                <button class="btn btn-sm btn-secondary" @onclick="ClosePackageDetail">Close</button>
+            </div>
+        </div>
+    </div>
 }
 
-<h3>Orders</h3>
+<!-- ── Submit Containers modal ──────────────────────────────── -->
+@if (showSubmitModal)
+{
+    <div class="modal-overlay" @onclick="CloseSubmitModal">
+        <div class="modal-dialog-box" style="width:860px; max-width:96vw;" @onclick:stopPropagation="true">
+            <div class="modal-dialog-header">
+                <span class="modal-dialog-title">Submit Containers</span>
+                <button class="modal-close-btn" @onclick="CloseSubmitModal">×</button>
+            </div>
+            <div class="modal-dialog-body" style="max-height:70vh; overflow-y:auto;">
+                <div class="d-flex gap-3">
+                    <!-- Left: input area -->
+                    <div style="flex:4; min-width:0;">
+                        <label class="form-label-sm">
+                            Paste Code / SSCC pairs (alternating lines)
+                        </label>
+                        <textarea class="form-control form-control-sm"
+                                  style="height:280px; font-family:monospace; font-size:11px;"
+                                  @onchange="HandleManualInputChange"
+                                  placeholder="Code line&#10;SSCC line&#10;Code line&#10;SSCC line…"></textarea>
+                        <button class="btn btn-sm btn-outline-secondary mt-2"
+                                @onclick="LoadCodesFromFile">📂 Load from file</button>
+                        @if (validationError)
+                        {
+                            <div class="alert alert-warning py-1 px-2 text-xs mt-2">
+                                ⚠ Some rows failed validation (highlighted in red). Correct them before submitting.
+                            </div>
+                        }
+                    </div>
+                    <!-- Right: preview table -->
+                    <div style="flex:5; min-width:0; overflow-x:auto;">
+                        <label class="form-label-sm">Preview (@packageCouples.Count pairs)</label>
+                        <table class="table table-sm table-xs-font table-bordered">
+                            <thead class="table-light">
+                                <tr><th>Code</th><th>SSCC</th><th>✓</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var p in packageCouples)
+                                {
+                                    <tr class="@(p.IsValid ? "" : "table-danger")">
+                                        <td style="word-break:break-all;">@p.Code</td>
+                                        <td style="word-break:break-all;">@p.SSCCCode</td>
+                                        <td>@(p.IsValid ? "✓" : "✗")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(submitError))
+                {
+                    <div class="alert alert-danger py-1 px-2 text-sm mt-2">@submitError</div>
+                }
+            </div>
+            <div class="modal-dialog-footer">
+                <button class="btn btn-sm btn-secondary" @onclick="CloseSubmitModal">Cancel</button>
+                <button class="btn btn-sm btn-primary"
+                        disabled="@(isSubmitting || validationError || !packageCouples.Any())"
+                        @onclick="SubmitContainers">
+                    @(isSubmitting ? "Submitting…" : "Submit")
+                </button>
+            </div>
+        </div>
+    </div>
+}
 
-<table class="table">
-    <thead>
-        <tr>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.containerCode))">Code</th>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.uuid))">Uuid</th>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.containerType))">Type</th>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.codesCount))">Count</th>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.finishedAt))">Date</th>
-            <th @onclick="() => ChangeSortColumn(nameof(Item.locationName))">Location</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Items)
+<!-- ── Page root ─────────────────────────────────────────────── -->
+<div class="page-root-flex">
+
+    <!-- Header -->
+    <div class="page-header">
+        <h5 class="mb-0">Submission Requests</h5>
+        <div class="d-flex align-items-center gap-2">
+            @if (isRefreshing) { <span class="loading-spinner" title="Refreshing…"></span> }
+            <span class="text-xs text-muted">↻ @refreshInterval s</span>
+            <button class="btn btn-sm btn-primary" @onclick="ShowSubmitModal">+ Submit Containers</button>
+        </div>
+    </div>
+
+    <!-- Split pane -->
+    <div class="split-pane-wrapper" id="req-split-wrapper">
+
+        <!-- ── TOP: requests list ─────────────────────────────── -->
+        <div class="split-pane-top" style="flex: 0 0 @(topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
+            <div class="pane-toolbar">
+                <span class="pane-title">Requests (@(requests?.Count() ?? 0))</span>
+            </div>
+            <div class="pane-scroll">
+                @if (requests == null)
+                {
+                    <div class="loading-state">Loading requests…</div>
+                }
+                else if (!requests.Any())
+                {
+                    <div class="empty-state">No submission requests yet.</div>
+                }
+                else
+                {
+                    <table class="table table-sm table-xs-font table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>ID</th>
+                                <th>Filename</th>
+                                <th>Total</th>
+                                <th>Processed</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var req in PagedRequests)
+                            {
+                                var counts = _counts.GetValueOrDefault(req.Id);
+                                <tr class="@(selectedRequest?.Id == req.Id ? "highlighted-row" : "")"
+                                    style="cursor:pointer;" @onclick="() => SelectRequest(req)">
+                                    <td>@req.Id</td>
+                                    <td>@(req.Filename ?? "—")</td>
+                                    <td>@(counts.hasData ? counts.total.ToString() : "—")</td>
+                                    <td>@(counts.hasData ? counts.processed.ToString() : "—")</td>
+                                    <td>@ReqStatusBadge(req.Status)</td>
+                                    <td>@req.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (ReqTotalPages > 1)
+                    {
+                        <div class="pagination-bar">
+                            <button class="pg-btn" disabled="@(reqPage <= 1)" @onclick="() => reqPage--">&#8249;</button>
+                            <span class="pg-info">@reqPage / @ReqTotalPages</span>
+                            <button class="pg-btn" disabled="@(reqPage >= ReqTotalPages)" @onclick="() => reqPage++">&#8250;</button>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+
+        <!-- ── Drag divider ──────────────────────────────────── -->
+        <div class="split-pane-divider" id="req-divider">
+            <div class="divider-grip"></div>
+        </div>
+
+        <!-- ── BOTTOM: packages ───────────────────────────────── -->
+        <div class="split-pane-bottom">
+            <div class="pane-toolbar">
+                @if (selectedRequest != null)
+                {
+                    <span class="pane-title">Packages — Request #@selectedRequest.Id</span>
+                    @if (isReprocessingAll)
+                    {
+                        <div class="reprocess-bar ms-2">
+                            <span class="loading-spinner"></span>
+                            Reprocessing… @reprocessDone / @reprocessTotal
+                        </div>
+                    }
+                    else
+                    {
+                        var errorCount = selectedDetail?.Packages?.Count(p => p.Status < 0) ?? 0;
+                        @if (errorCount > 0)
+                        {
+                            <button class="btn btn-sm btn-outline-warning ms-auto"
+                                    @onclick="ReprocessAll">
+                                ↺ Reprocess All Errors (@errorCount)
+                            </button>
+                        }
+                    }
+                }
+                else
+                {
+                    <span class="pane-title text-muted">Select a request above</span>
+                }
+            </div>
+            <div class="pane-scroll">
+                @if (selectedRequest == null)
+                {
+                    <div class="empty-state">Click a request row above to view its packages.</div>
+                }
+                else if (selectedDetail == null)
+                {
+                    <div class="loading-state">Loading packages…</div>
+                }
+                else if (!(selectedDetail.Packages?.Any() ?? false))
+                {
+                    <div class="empty-state">No packages for this request.</div>
+                }
+                else
+                {
+                    <table class="table table-sm table-xs-font mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th>ID</th>
+                                <th>Code</th>
+                                <th>SSCC Code</th>
+                                <th>Status</th>
+                                <th>Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var pkg in PagedPackages)
+                            {
+                                var (pc, pl) = PkgStatusInfo(pkg.Status);
+                                <tr style="cursor:pointer;" @onclick="() => OpenPackageDetail(pkg)">
+                                    <td>@pkg.Id</td>
+                                    <td class="cell-guid" style="max-width:200px;">@pkg.Code</td>
+                                    <td class="cell-guid" style="max-width:160px;">@(pkg.SSCCCode ?? "—")</td>
+                                    <td><span class="badge @pc">@pl</span></td>
+                                    <td>@pkg.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
+                                    <td class="cell-actions" @onclick:stopPropagation="true">
+                                        @if (pkg.Status < 0)
+                                        {
+                                            <button class="btn-xs btn btn-outline-warning"
+                                                    @onclick="() => ReprocessSingle(pkg)">↺</button>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    @if (PkgTotalPages > 1)
+                    {
+                        <div class="pagination-bar">
+                            <button class="pg-btn" disabled="@(pkgPage <= 1)" @onclick="() => pkgPage--">&#8249;</button>
+                            <span class="pg-info">@pkgPage / @PkgTotalPages (@(selectedDetail.Packages?.Count) total)</span>
+                            <button class="pg-btn" disabled="@(pkgPage >= PkgTotalPages)" @onclick="() => pkgPage++">&#8250;</button>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    // ── Data ─────────────────────────────────────────────────────────────
+    private IEnumerable<PackageRequest>? requests;
+    private PackageRequest? selectedRequest;
+    private PackageRequest? selectedDetail;   // with Packages loaded
+    private Package? detailPackage;           // for package detail modal
+    private Dictionary<int, (bool hasData, int total, int processed)> _counts = new();
+
+    // ── Pagination ────────────────────────────────────────────────────────
+    private const int ReqPageSize = 20;
+    private const int PkgPageSize = 5;
+    private int reqPage = 1;
+    private int pkgPage = 1;
+
+    private IEnumerable<PackageRequest> PagedRequests =>
+        (requests ?? Enumerable.Empty<PackageRequest>())
+        .OrderByDescending(r => r.Id)
+        .Skip((reqPage - 1) * ReqPageSize).Take(ReqPageSize);
+
+    private int ReqTotalPages =>
+        (int)Math.Ceiling((requests?.Count() ?? 0) / (double)ReqPageSize);
+
+    private IEnumerable<Package> PagedPackages =>
+        (selectedDetail?.Packages ?? new List<Package>())
+        .Skip((pkgPage - 1) * PkgPageSize).Take(PkgPageSize);
+
+    private int PkgTotalPages =>
+        (int)Math.Ceiling((selectedDetail?.Packages?.Count ?? 0) / (double)PkgPageSize);
+
+    // ── Auto-refresh ──────────────────────────────────────────────────────
+    private CancellationTokenSource? _cts;
+    private bool isRefreshing = false;
+    private int refreshInterval = 5;
+
+    // ── Split pane ────────────────────────────────────────────────────────
+    private double topPct = 40;
+    private DotNetObjectReference<Containers>? _selfRef;
+
+    // ── Submit modal ──────────────────────────────────────────────────────
+    private bool showSubmitModal = false;
+    private string manualInput = string.Empty;
+    private List<PackageCouple> packageCouples = new();
+    private bool validationError = false;
+    private string submitError = string.Empty;
+    private bool isSubmitting = false;
+
+    // ── Reprocess ─────────────────────────────────────────────────────────
+    private bool isReprocessingAll = false;
+    private bool isReprocessingSingle = false;
+    private int reprocessDone = 0;
+    private int reprocessTotal = 0;
+
+    // ── Toasts ────────────────────────────────────────────────────────────
+    private record ToastEntry(string Message, string CssClass);
+    private List<ToastEntry> toasts = new();
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        requests = await RequestService.GetPackageRequestsAsync();
+        _cts = new CancellationTokenSource();
+        _ = AutoRefreshLoop(_cts.Token);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
         {
-            <tr>
-                <td>@item.containerCode</td>
-                <td>@item.uuid</td>
-                <td>@item.containerType</td>
-                <td>@item.codesCount</td>
-                <td>@item.finishedAt</td>
-                <td>@item.locationName</td>
-            </tr>
+            _selfRef = DotNetObjectReference.Create(this);
+            await JSRuntime.InvokeVoidAsync("initSplitPane", "req-split-wrapper", "req-divider", _selfRef);
         }
-    </tbody>
-</table>
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _selfRef?.Dispose();
+    }
+
+    [JSInvokable]
+    public void SetTopPaneHeight(double pct)
+    {
+        topPct = pct;
+        StateHasChanged();
+    }
+
+    // ── Auto-refresh ──────────────────────────────────────────────────────
+    private async Task AutoRefreshLoop(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            // Active = any package not final (not < 0 and not == 12)
+            bool hasActive = selectedDetail?.Packages?.Any(p => p.Status >= 0 && p.Status < 12) ?? false;
+            refreshInterval = hasActive ? 5 : 30;
+
+            try { await Task.Delay(TimeSpan.FromSeconds(refreshInterval), token); }
+            catch (OperationCanceledException) { return; }
+
+            if (isReprocessingAll) continue;
+
+            isRefreshing = true;
+            await InvokeAsync(StateHasChanged);
+
+            try
+            {
+                requests = await RequestService.GetPackageRequestsAsync();
+                if (selectedRequest != null)
+                {
+                    selectedDetail = await RequestService.GetPackageRequestByIdAsync(selectedRequest.Id);
+                    selectedRequest = requests?.FirstOrDefault(r => r.Id == selectedRequest.Id) ?? selectedRequest;
+                    UpdateCounts(selectedDetail);
+                }
+            }
+            catch { }
+
+            isRefreshing = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    // ── Select request ────────────────────────────────────────────────────
+    private async Task SelectRequest(PackageRequest req)
+    {
+        selectedRequest = req;
+        selectedDetail  = null;
+        pkgPage         = 1;
+        detailPackage   = null;
+
+        try
+        {
+            selectedDetail = await RequestService.GetPackageRequestByIdAsync(req.Id);
+            UpdateCounts(selectedDetail);
+        }
+        catch
+        {
+            ShowToast("Failed to load request details.", "toast-error");
+        }
+    }
+
+    private void UpdateCounts(PackageRequest? detail)
+    {
+        if (detail == null) return;
+        var total     = detail.Packages?.Count ?? 0;
+        var processed = detail.Packages?.Count(p => p.Status == 12) ?? 0;
+        _counts[detail.Id] = (true, total, processed);
+    }
+
+    // ── Package detail ────────────────────────────────────────────────────
+    private void OpenPackageDetail(Package pkg) => detailPackage = pkg;
+    private void ClosePackageDetail() => detailPackage = null;
+
+    // ── Reprocess single (from table row button) ──────────────────────────
+    private async Task ReprocessSingle(Package pkg)
+    {
+        try
+        {
+            await RequestService.ReprocessPackage(pkg.Id);
+            if (selectedRequest != null)
+            {
+                selectedDetail = await RequestService.GetPackageRequestByIdAsync(selectedRequest.Id);
+                UpdateCounts(selectedDetail);
+            }
+            ShowToast($"Package #{pkg.Id} requeued.", "toast-success");
+        }
+        catch { ShowToast("Reprocess failed.", "toast-error"); }
+    }
+
+    // ── Reprocess single (from detail modal) ─────────────────────────────
+    private async Task ReprocessSinglePackage()
+    {
+        if (detailPackage == null) return;
+        isReprocessingSingle = true;
+        try
+        {
+            await RequestService.ReprocessPackage(detailPackage.Id);
+            if (selectedRequest != null)
+            {
+                selectedDetail = await RequestService.GetPackageRequestByIdAsync(selectedRequest.Id);
+                UpdateCounts(selectedDetail);
+                // refresh detailPackage data
+                detailPackage = selectedDetail.Packages?.FirstOrDefault(p => p.Id == detailPackage.Id) ?? detailPackage;
+            }
+            ShowToast($"Package #{detailPackage.Id} requeued.", "toast-success");
+        }
+        catch { ShowToast("Reprocess failed.", "toast-error"); }
+        finally { isReprocessingSingle = false; }
+    }
+
+    // ── Reprocess all errors ──────────────────────────────────────────────
+    private async Task ReprocessAll()
+    {
+        if (selectedDetail?.Packages == null) return;
+
+        var errorPkgs = selectedDetail.Packages.Where(p => p.Status < 0).ToList();
+        if (!errorPkgs.Any()) return;
+
+        isReprocessingAll = true;
+        reprocessDone  = 0;
+        reprocessTotal = errorPkgs.Count;
+        await InvokeAsync(StateHasChanged);
+
+        foreach (var pkg in errorPkgs)
+        {
+            try
+            {
+                await RequestService.ReprocessPackage(pkg.Id);
+            }
+            catch { /* log, continue */ }
+
+            reprocessDone++;
+            await InvokeAsync(StateHasChanged);
+            await Task.Delay(300); // small gap between calls
+        }
+
+        // Refresh data
+        try
+        {
+            selectedDetail = await RequestService.GetPackageRequestByIdAsync(selectedRequest!.Id);
+            UpdateCounts(selectedDetail);
+        }
+        catch { }
+
+        isReprocessingAll = false;
+        ShowToast($"Reprocessed {reprocessDone} packages.", "toast-success");
+        await InvokeAsync(StateHasChanged);
+    }
+
+    // ── Submit modal ──────────────────────────────────────────────────────
+    private void ShowSubmitModal()
+    {
+        manualInput     = string.Empty;
+        packageCouples  = new();
+        validationError = false;
+        submitError     = string.Empty;
+        isSubmitting    = false;
+        showSubmitModal = true;
+    }
+
+    private void CloseSubmitModal() => showSubmitModal = false;
+
+    private void HandleManualInputChange(ChangeEventArgs e)
+    {
+        manualInput = e.Value?.ToString() ?? string.Empty;
+        ParseInput();
+    }
+
+    private void ParseInput()
+    {
+        packageCouples.Clear();
+        var lines = manualInput.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < lines.Length; i += 2)
+        {
+            var code = i < lines.Length ? lines[i].Trim() : string.Empty;
+            var sscc = (i + 1) < lines.Length ? lines[i + 1].Trim() : string.Empty;
+            var codeOk = System.Text.RegularExpressions.Regex.IsMatch(code, @"^01\d+21.*$");
+            var ssccOk = System.Text.RegularExpressions.Regex.IsMatch(sscc, @"^00\d+$");
+            packageCouples.Add(new PackageCouple { Code = code, SSCCCode = sscc, IsValid = codeOk && ssccOk });
+        }
+        validationError = packageCouples.Any(p => !p.IsValid);
+    }
+
+    private async Task LoadCodesFromFile()
+    {
+        try
+        {
+            var content = await JSRuntime.InvokeAsync<string>("readFileContent");
+            if (!string.IsNullOrEmpty(content))
+            {
+                manualInput = content;
+                ParseInput();
+            }
+        }
+        catch { ShowToast("Failed to read file.", "toast-error"); }
+    }
+
+    private async Task SubmitContainers()
+    {
+        ParseInput();
+        if (validationError || !packageCouples.Any()) return;
+
+        isSubmitting = true;
+        submitError  = string.Empty;
+
+        try
+        {
+            var form = new PackageRequestForm
+            {
+                User      = "user",
+                Filename  = "upload",
+                packages  = packageCouples
+            };
+            await RequestService.CreatePackageRequestAsync(form);
+            requests = await RequestService.GetPackageRequestsAsync();
+            showSubmitModal = false;
+            ShowToast("Containers submitted.", "toast-success");
+        }
+        catch (Exception ex)
+        {
+            submitError = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    // ── Status helpers ────────────────────────────────────────────────────
+    private static string ReqStatusBadge(int status)
+    {
+        // PackageRequest status is opaque in current system — show raw value
+        return status == 0 ? "Created" : $"Status {status}";
+    }
+
+    private static (string css, string label) PkgStatusInfo(int status) => status switch
+    {
+        < 0  => ("badge-error",      GetStatusLabel(status)),
+          0  => ("badge-created",    "Created"),
+        1 or 2 or 3 => ("badge-info",       GetStatusLabel(status)),
+        >= 4 and <= 11 => ("badge-processing", GetStatusLabel(status)),
+          12 => ("badge-completed",  "Reported"),
+        _    => ("badge-unknown",    $"Status {status}")
+    };
+
+    private static string GetStatusLabel(int s) => s switch
+    {
+        -12 => "Agg: Unknown",
+        -11 => "Agg: Failed",
+        -10 => "Agg: Bad ext status",
+        -9  => "Agg: Process error",
+        -8  => "Agg: Send error",
+        -7  => "App: Process error",
+        -6  => "App: Failed",
+        -5  => "App: Bad ext status",
+        -4  => "App: Send error",
+        -3  => "DB: No content",
+        -2  => "DB: Not found",
+        -1  => "CisInfo: NOK",
+         0  => "Created",
+         1  => "CisInfo: OK",
+         2  => "DB: Status OK",
+         3  => "DB: Content received",
+         4  => "App: Sent",
+         5  => "App: Processing",
+         6  => "App: Created",
+         7  => "App: Processing",
+         8  => "Agg: Sent",
+         9  => "Agg: Processing",
+        10  => "Agg: Created",
+        11  => "Agg: Processing",
+        12  => "Reported",
+        _   => $"Status {s}"
+    };
+
+    private async void ShowToast(string message, string cssClass)
+    {
+        var e = new ToastEntry(message, cssClass);
+        toasts.Add(e);
+        await InvokeAsync(StateHasChanged);
+        await Task.Delay(4000);
+        toasts.Remove(e);
+        await InvokeAsync(StateHasChanged);
+    }
+}

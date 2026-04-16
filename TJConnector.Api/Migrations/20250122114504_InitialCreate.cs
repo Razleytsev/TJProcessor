@@ -7,7 +7,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace TJConnector.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -102,8 +102,7 @@ namespace TJConnector.Api.Migrations
                     AggregationGuid = table.Column<Guid>(type: "uuid", nullable: true),
                     RecordDate = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     StatusHistory = table.Column<string>(type: "jsonb", nullable: true),
-                    PackageRequestId = table.Column<int>(type: "integer", nullable: false),
-                    PackageRequestId1 = table.Column<int>(type: "integer", nullable: true)
+                    PackageRequestId = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -114,11 +113,6 @@ namespace TJConnector.Api.Migrations
                         principalTable: "PackageRequests",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_Packages_PackageRequests_PackageRequestId1",
-                        column: x => x.PackageRequestId1,
-                        principalTable: "PackageRequests",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -129,14 +123,14 @@ namespace TJConnector.Api.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     Type = table.Column<int>(type: "integer", nullable: false),
                     ProductId = table.Column<int>(type: "integer", nullable: false),
-                    ProductId1 = table.Column<int>(type: "integer", nullable: true),
                     Count = table.Column<int>(type: "integer", nullable: false),
                     Status = table.Column<int>(type: "integer", nullable: false),
-                    ExternalGuid = table.Column<Guid>(type: "uuid", nullable: false),
+                    ExternalGuid = table.Column<Guid>(type: "uuid", nullable: true),
                     Description = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: true),
                     User = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: true),
                     RecordDate = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
-                    StatusHistory = table.Column<string>(type: "jsonb", nullable: true)
+                    StatusHistoryJson = table.Column<string>(type: "jsonb", nullable: false),
+                    StatusMessage = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -147,11 +141,6 @@ namespace TJConnector.Api.Migrations
                         principalTable: "Products",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_CodeOrders_Products_ProductId1",
-                        column: x => x.ProductId1,
-                        principalTable: "Products",
-                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
@@ -160,6 +149,7 @@ namespace TJConnector.Api.Migrations
                 {
                     Id = table.Column<int>(type: "integer", nullable: false),
                     CodeOrderId = table.Column<int>(type: "integer", nullable: false),
+                    OrderContent = table.Column<string[]>(type: "text[]", nullable: false),
                     RecordDate = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false, defaultValueSql: "NOW()"),
                     DownloadHistory = table.Column<string>(type: "jsonb", nullable: true)
                 },
@@ -201,11 +191,6 @@ namespace TJConnector.Api.Migrations
                 column: "ProductId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_CodeOrders_ProductId1",
-                table: "CodeOrders",
-                column: "ProductId1");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_CodeOrdersContents_CodeOrderId",
                 table: "CodeOrdersContents",
                 column: "CodeOrderId",
@@ -221,11 +206,6 @@ namespace TJConnector.Api.Migrations
                 name: "IX_Packages_PackageRequestId",
                 table: "Packages",
                 column: "PackageRequestId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Packages_PackageRequestId1",
-                table: "Packages",
-                column: "PackageRequestId1");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Packages_SSCCCode",
