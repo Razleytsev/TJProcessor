@@ -45,7 +45,7 @@ public class PackageRequestController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<PackageRequest>>> GetOrders()
     {
-        return await _context.PackageRequests.ToListAsync();
+        return await _context.PackageRequests.Include(r => r.Packages).ToListAsync();
     }
 
     [HttpPost]

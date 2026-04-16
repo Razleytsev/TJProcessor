@@ -77,10 +77,16 @@ public class EmitPacksConsumer : IConsumer<TestRunStart>
                 await FailStage(run, 1, info.Message ?? "Poll emission failed");
                 return;
             }
-            if (info.Content?.status == TestRunStatusContract.EmissionReady) break;
+            var st = info.Content?.status;
+            if (st.HasValue && TestRunStatusContract.EmissionReady.Contains(st.Value)) break;
+            if (st.HasValue && TestRunStatusContract.EmissionFail.Contains(st.Value))
+            {
+                await FailStage(run, 1, $"Emission reached fail status {st}");
+                return;
+            }
             if (attempt == TestRunStatusContract.EmissionPollMaxAttempts)
             {
-                await FailStage(run, 1, $"Emission did not reach status {TestRunStatusContract.EmissionReady} after {attempt} attempts (last status={info.Content?.status})");
+                await FailStage(run, 1, $"Emission did not reach ready status after {attempt} attempts (last status={st})");
                 return;
             }
             await Task.Delay(TestRunStatusContract.EmissionPollDelayMs);

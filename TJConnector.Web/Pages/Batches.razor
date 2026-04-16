@@ -213,8 +213,8 @@
 <!-- ── "Order Codes" Modal ───────────────────────────────────── -->
 @if (showModal)
 {
-    <div class="modal-overlay" @onclick="CloseModal">
-        <div class="modal-dialog-box" @onclick:stopPropagation="true">
+    <div class="modal-overlay" @onmousedown="CloseModal">
+        <div class="modal-dialog-box" @onmousedown:stopPropagation="true">
             <div class="modal-dialog-header">
                 <span class="modal-dialog-title">Order Codes</span>
                 <button class="modal-close-btn" @onclick="CloseModal">×</button>
@@ -262,10 +262,9 @@
                 <div class="mb-2">
                     <label class="form-label form-label-sm">
                         Codes Count <span class="text-danger">*</span>
-                        <span class="text-xs text-muted">(multiple of 1 000)</span>
                     </label>
                     <input type="number" class="form-control form-control-sm @(!string.IsNullOrEmpty(codesCountError) ? "is-invalid" : "")"
-                           min="1000" step="1000"
+                           min="1"
                            value="@codesCountInput"
                            @oninput="OnCodesCountInput" />
                     @if (!string.IsNullOrEmpty(codesCountError))
@@ -568,7 +567,7 @@
         if (string.IsNullOrWhiteSpace(gtinInput)) { filteredProducts = null; return; }
 
         filteredProducts = allProducts?
-            .Where(p => selectedTypeVal == 0 ? p.Type == 0 : p.Type == 1)
+            .Where(p => p.Type == selectedTypeVal)
             .Where(p => p.Gtin.Contains(gtinInput, StringComparison.OrdinalIgnoreCase)
                      || (p.Name?.Contains(gtinInput, StringComparison.OrdinalIgnoreCase) ?? false))
             .Take(8);
@@ -587,9 +586,7 @@
         if (int.TryParse(e.Value?.ToString(), out var val))
         {
             codesCountInput = val;
-            codesCountError = val <= 0 ? "Minimum 1 000."
-                            : val % 1000 != 0 ? "Must be a multiple of 1 000."
-                            : string.Empty;
+            codesCountError = val <= 0 ? "Must be greater than 0." : string.Empty;
         }
         else
         {
@@ -601,9 +598,9 @@
     private async Task SubmitOrder()
     {
         // Validate
-        if (!codesCountInput.HasValue || codesCountInput <= 0 || codesCountInput % 1000 != 0)
+        if (!codesCountInput.HasValue || codesCountInput <= 0)
         {
-            codesCountError = "Codes count is required and must be a multiple of 1 000.";
+            codesCountError = "Codes count is required and must be greater than 0.";
             return;
         }
         if (selectedTypeVal != 3 && !modalForm.ProductId.HasValue)

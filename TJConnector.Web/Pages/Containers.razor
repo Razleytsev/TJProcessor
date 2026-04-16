@@ -16,8 +16,8 @@
 <!-- ── Package detail modal ──────────────────────────────────── -->
 @if (detailPackage != null)
 {
-    <div class="modal-overlay" @onclick="ClosePackageDetail">
-        <div class="modal-dialog-box" @onclick:stopPropagation="true">
+    <div class="modal-overlay" @onmousedown="ClosePackageDetail">
+        <div class="modal-dialog-box" @onmousedown:stopPropagation="true">
             <div class="modal-dialog-header">
                 <span class="modal-dialog-title">Package #@detailPackage.Id</span>
                 <button class="modal-close-btn" @onclick="ClosePackageDetail">×</button>
@@ -73,8 +73,8 @@
 <!-- ── Submit Containers modal ──────────────────────────────── -->
 @if (showSubmitModal)
 {
-    <div class="modal-overlay" @onclick="CloseSubmitModal">
-        <div class="modal-dialog-box" style="width:860px; max-width:96vw;" @onclick:stopPropagation="true">
+    <div class="modal-overlay" @onmousedown="CloseSubmitModal">
+        <div class="modal-dialog-box" style="width:860px; max-width:96vw;" @onmousedown:stopPropagation="true">
             <div class="modal-dialog-header">
                 <span class="modal-dialog-title">Submit Containers</span>
                 <button class="modal-close-btn" @onclick="CloseSubmitModal">×</button>
@@ -363,6 +363,7 @@
     protected override async Task OnInitializedAsync()
     {
         requests = await RequestService.GetPackageRequestsAsync();
+        UpdateAllCounts();
         _cts = new CancellationTokenSource();
         _ = AutoRefreshLoop(_cts.Token);
     }
@@ -410,6 +411,7 @@
             try
             {
                 requests = await RequestService.GetPackageRequestsAsync();
+                UpdateAllCounts();
                 if (selectedRequest != null)
                 {
                     selectedDetail = await RequestService.GetPackageRequestByIdAsync(selectedRequest.Id);
@@ -449,6 +451,13 @@
         var total     = detail.Packages?.Count ?? 0;
         var processed = detail.Packages?.Count(p => p.Status == 12) ?? 0;
         _counts[detail.Id] = (true, total, processed);
+    }
+
+    private void UpdateAllCounts()
+    {
+        if (requests == null) return;
+        foreach (var req in requests)
+            UpdateCounts(req);
     }
 
     // ── Package detail ────────────────────────────────────────────────────

@@ -66,10 +66,16 @@ public class EmitMastercaseConsumer : IConsumer<TestRunStage3Mastercase>
                 await FailStage(run, 3, info.Message ?? "Poll container emission failed");
                 return;
             }
-            if (info.Content?.status == TestRunStatusContract.EmissionReady) break;
+            var st = info.Content?.status;
+            if (st.HasValue && TestRunStatusContract.EmissionReady.Contains(st.Value)) break;
+            if (st.HasValue && TestRunStatusContract.EmissionFail.Contains(st.Value))
+            {
+                await FailStage(run, 3, $"Container emission reached fail status {st}");
+                return;
+            }
             if (attempt == TestRunStatusContract.EmissionPollMaxAttempts)
             {
-                await FailStage(run, 3, $"Container emission did not reach status {TestRunStatusContract.EmissionReady} after {attempt} attempts (last status={info.Content?.status})");
+                await FailStage(run, 3, $"Container emission did not reach ready status after {attempt} attempts (last status={st})");
                 return;
             }
             await Task.Delay(TestRunStatusContract.EmissionPollDelayMs);

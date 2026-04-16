@@ -67,7 +67,7 @@ public class SubmitApplicationConsumer : IConsumer<TestRunStage4Application>
             }
 
             var status = info.Content?.status;
-            if (status == TestRunStatusContract.ApplicationReady) break;
+            if (status.HasValue && TestRunStatusContract.ApplicationReady.Contains(status.Value)) break;
 
             if (status == TestRunStatusContract.ApplicationApproved && !processCalled)
             {
@@ -90,7 +90,7 @@ public class SubmitApplicationConsumer : IConsumer<TestRunStage4Application>
 
             if (attempt == TestRunStatusContract.AppAggPollMaxAttempts)
             {
-                await FailStage(run, 4, $"Application did not reach status {TestRunStatusContract.ApplicationReady} after {attempt} attempts (last status={status})");
+                await FailStage(run, 4, $"Application did not reach ready status after {attempt} attempts (last status={status})");
                 return;
             }
             await Task.Delay(TestRunStatusContract.AppAggDelay(attempt));
