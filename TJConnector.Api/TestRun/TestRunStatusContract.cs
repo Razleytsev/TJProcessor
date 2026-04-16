@@ -10,8 +10,8 @@ public static class TestRunStatusContract
 
     public const int ApplicationApproved = 1;
     public const int ApplicationProcessing = 3;
-    public static readonly int[] ApplicationReady = { 4, 6 }; // AVAILABLE and DONE
-    public static readonly int[] ApplicationFail = { 0, 2, 5 };
+    public const int ApplicationTerminal = 5;
+    public static readonly int[] ApplicationFail = { 0, 2, 4 };
 
     public const int AggregationApproved = 1;
     public const int AggregationProcessing = 3;

@@ -67,7 +67,7 @@ public class SubmitApplicationConsumer : IConsumer<TestRunStage4Application>
             }
 
             var status = info.Content?.status;
-            if (status.HasValue && TestRunStatusContract.ApplicationReady.Contains(status.Value)) break;
+            if (status == TestRunStatusContract.ApplicationTerminal) break;
 
             if (status == TestRunStatusContract.ApplicationApproved && !processCalled)
             {
