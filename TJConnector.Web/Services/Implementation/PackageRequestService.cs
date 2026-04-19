@@ -62,5 +62,15 @@ namespace TJConnector.Web.Services.Implementation
             response.EnsureSuccessStatusCode();
             return id;
         }
+
+        public async Task<int> ReprocessCreated(int requestId)
+        {
+            var response = await _httpClient.PostAsJsonAsync($"api/packagerequest/{requestId}/reprocess-created", new { });
+            response.EnsureSuccessStatusCode();
+            var result = await response.Content.ReadFromJsonAsync<ReprocessCreatedResult>();
+            return result?.count ?? 0;
+        }
+
+        private class ReprocessCreatedResult { public int count { get; set; } }
     }
 }

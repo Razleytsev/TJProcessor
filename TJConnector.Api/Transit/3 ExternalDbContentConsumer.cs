@@ -26,6 +26,8 @@ public class ExternalDbContent : IConsumer<ExternalDbContentBody3>
         var package = container.Message.Container;
 
         package.Status = -3;
+        _context.Entry(package).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
         _logger.LogInformation($"Retreiving content from external database: {package.SSCCCode}");
 
         var dbContent = await _externalDBData.GetContainerContent(package.Code);

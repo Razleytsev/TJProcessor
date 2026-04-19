@@ -60,9 +60,17 @@ public class StateAggregationStatus : IConsumer<StateAggregationStatusBody8>
                 await _context.SaveChangesAsync();
                 return;
             case 3:
-                // FIX: post-increment (RetryCount++) returns the OLD value, so retry never advanced.
-                // Use pre-computed incremented value so each republish carries the correct count.
                 int r = container.Message.RetryCount + 1;
+                if (r > 30)
+                {
+                    package.Status = -12;
+                    package.Comment = $"Aggregation processing timeout after {r} attempts";
+                    package.AddStatus(-12);
+                    _context.Entry(package).State = EntityState.Modified;
+                    await _context.SaveChangesAsync();
+                    _logger.LogError("Package {Sscc}: aggregation timeout after {Attempts} attempts", package.SSCCCode, r);
+                    return;
+                }
                 package.Status = 11;
                 package.Comment = $"Aggregation processing in TJ state system (attempt {r})";
                 package.AddStatus(11);

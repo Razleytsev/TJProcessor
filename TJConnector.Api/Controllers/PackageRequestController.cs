@@ -136,6 +136,22 @@ public class PackageRequestController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("{requestId}/reprocess-created")]
+    public async Task<ActionResult> ReprocessCreated(int requestId)
+    {
+        var packages = await _context.Packages
+            .Where(p => p.PackageRequestId == requestId && p.Status == 0)
+            .ToListAsync();
+
+        if (!packages.Any())
+            return Ok(new { count = 0 });
+
+        await _bus.Publish(new StateCheckSSCCBody1 { Containers = packages });
+        _logger.LogInformation("Re-queued {Count} packages at status 0 for request {Id}", packages.Count, requestId);
+
+        return Ok(new { count = packages.Count });
+    }
+
     [HttpGet("test/{id}")]
     public async Task<ActionResult<ContainerInfoResponse>> GetExternalOrderById(string id)
     {

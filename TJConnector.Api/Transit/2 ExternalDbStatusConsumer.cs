@@ -24,6 +24,8 @@ public class ExternalDbCheck : IConsumer<ExternalDbBody2>
         var package = container.Message.Container;
 
         package.Status = -2;
+        _context.Entry(package).State = EntityState.Modified;
+        await _context.SaveChangesAsync();
         _logger.LogInformation($"Checking package in external database: {package.SSCCCode}");
 
         var dbInfoList = await _externalDBData.GetContainerInfo(new List<string> { package.Code });

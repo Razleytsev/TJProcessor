@@ -228,9 +228,17 @@
                     else
                     {
                         var errorCount = selectedDetail?.Packages?.Count(p => p.Status < 0) ?? 0;
+                        var createdCount = selectedDetail?.Packages?.Count(p => p.Status == 0) ?? 0;
+                        @if (createdCount > 0)
+                        {
+                            <button class="btn btn-sm btn-outline-info ms-auto"
+                                    @onclick="ReprocessCreated">
+                                ↺ Reprocess Created (@createdCount)
+                            </button>
+                        }
                         @if (errorCount > 0)
                         {
-                            <button class="btn btn-sm btn-outline-warning ms-auto"
+                            <button class="btn btn-sm btn-outline-warning @(createdCount > 0 ? "" : "ms-auto")"
                                     @onclick="ReprocessAll">
                                 ↺ Reprocess All Errors (@errorCount)
                             </button>
@@ -538,6 +546,19 @@
         isReprocessingAll = false;
         ShowToast($"Reprocessed {reprocessDone} packages.", "toast-success");
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ReprocessCreated()
+    {
+        if (selectedRequest == null) return;
+        try
+        {
+            var count = await RequestService.ReprocessCreated(selectedRequest.Id);
+            selectedDetail = await RequestService.GetPackageRequestByIdAsync(selectedRequest.Id);
+            UpdateCounts(selectedDetail);
+            ShowToast($"Re-queued {count} packages.", "toast-success");
+        }
+        catch { ShowToast("Reprocess created failed.", "toast-error"); }
     }
 
     // ── Submit modal ──────────────────────────────────────────────────────

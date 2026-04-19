@@ -12,5 +12,6 @@ namespace TJConnector.Web.Services.Contracts
         Task<PackageRequest> CreatePackageRequestAsync(PackageRequestForm form);
         Task<ProcessResponse> ProcessPackageRequestAsync(int uuid);
         Task<int> ReprocessPackage(int id);
+        Task<int> ReprocessCreated(int requestId);
     }
 }

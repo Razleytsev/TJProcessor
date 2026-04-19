@@ -25,11 +25,15 @@ public class StateCheckSSCC : IConsumer<StateCheckSSCCBody1>
     {
         var containers = message.Message.Containers;
 
-        containers.ForEach(x => x.Status = -1);
-
         _logger.LogInformation($"Report new batch with {containers.Count()} SSCC");
+
         foreach (var container in containers)
+        {
+            container.Status = -1;
             container.StatusHistory = new[] { new StatusHistory { Status = -1, StatusDate = DateTimeOffset.UtcNow } };
+            _context.Entry(container).State = EntityState.Modified;
+        }
+        await _context.SaveChangesAsync();
 
         var batches = containers.Chunk(50);
 
