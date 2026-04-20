@@ -12,8 +12,8 @@ using TJConnector.Postgres;
 namespace TJConnector.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250121100451_RemoveColumnsFixClasses")]
-    partial class RemoveColumnsFixClasses
+    [Migration("20250124060031_FixCodeOrderContentRelationship2")]
+    partial class FixCodeOrderContentRelationship2
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -42,6 +42,9 @@ namespace TJConnector.Api.Migrations
 
                     b.Property<Guid?>("ExternalGuid")
                         .HasColumnType("uuid");
+
+                    b.Property<int?>("OrderContentId")
+                        .HasColumnType("integer");
 
                     b.Property<int>("ProductId")
                         .HasColumnType("integer");

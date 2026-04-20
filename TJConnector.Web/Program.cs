@@ -1,10 +1,31 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Serilog;
+using TJConnector.Web.Services.Contracts;
+using TJConnector.Web.Services.Implementation;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor();
+builder.Services.AddServerSideBlazor()
+    .AddHubOptions(options =>
+    {
+        options.MaximumReceiveMessageSize = 1024 * 512;
+    });
+
+builder.Services.AddScoped(sp => new HttpClient
+{
+    BaseAddress = new Uri("http://localhost:5166")
+});
+
+builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IOrderService, OrderServiceWeb>();
+builder.Services.AddScoped<IMetadataService, MetadataService>();
+builder.Services.AddScoped<IBatchServiceWeb, BatchServiceWeb>();
+builder.Services.AddScoped<IPackageRequestService, PackageRequestService>();
+builder.Services.AddScoped<ITestRunServiceWeb, TestRunServiceWeb>();
+
+
 
 var app = builder.Build();
 
@@ -15,10 +36,14 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-builder.Services.AddHttpClient("Api",client =>
+app.Use(async (context, next) =>
 {
-    client.BaseAddress = new("https://localhost:7006");
-
+    if (context.Request.Path == "/")
+    {
+        context.Response.Redirect("/batches");
+        return;
+    }
+    await next();
 });
 
 app.UseHttpsRedirection();

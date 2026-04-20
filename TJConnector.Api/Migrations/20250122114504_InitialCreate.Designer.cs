@@ -12,8 +12,8 @@ using TJConnector.Postgres;
 namespace TJConnector.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250121041256_init")]
-    partial class init
+    [Migration("20250122114504_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -40,13 +40,10 @@ namespace TJConnector.Api.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<Guid>("ExternalGuid")
+                    b.Property<Guid?>("ExternalGuid")
                         .HasColumnType("uuid");
 
                     b.Property<int>("ProductId")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("ProductId1")
                         .HasColumnType("integer");
 
                     b.Property<DateTimeOffset>("RecordDate")
@@ -57,8 +54,12 @@ namespace TJConnector.Api.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
-                    b.Property<string>("StatusHistory")
+                    b.Property<string>("StatusHistoryJson")
+                        .IsRequired()
                         .HasColumnType("jsonb");
+
+                    b.Property<string>("StatusMessage")
+                        .HasColumnType("text");
 
                     b.Property<int>("Type")
                         .HasColumnType("integer");
@@ -70,8 +71,6 @@ namespace TJConnector.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ProductId");
-
-                    b.HasIndex("ProductId1");
 
                     b.ToTable("CodeOrders");
                 });
@@ -86,6 +85,10 @@ namespace TJConnector.Api.Migrations
 
                     b.Property<string>("DownloadHistory")
                         .HasColumnType("jsonb");
+
+                    b.PrimitiveCollection<string[]>("OrderContent")
+                        .IsRequired()
+                        .HasColumnType("text[]");
 
                     b.Property<DateTimeOffset>("RecordDate")
                         .ValueGeneratedOnAdd()
@@ -209,9 +212,6 @@ namespace TJConnector.Api.Migrations
                     b.Property<int>("PackageRequestId")
                         .HasColumnType("integer");
 
-                    b.Property<int?>("PackageRequestId1")
-                        .HasColumnType("integer");
-
                     b.Property<DateTimeOffset>("RecordDate")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -234,8 +234,6 @@ namespace TJConnector.Api.Migrations
                         .IsUnique();
 
                     b.HasIndex("PackageRequestId");
-
-                    b.HasIndex("PackageRequestId1");
 
                     b.HasIndex("SSCCCode")
                         .IsUnique();
@@ -312,15 +310,11 @@ namespace TJConnector.Api.Migrations
 
             modelBuilder.Entity("TJConnector.Postgres.Entities.CodeOrder", b =>
                 {
-                    b.HasOne("TJConnector.Postgres.Entities.Product", null)
-                        .WithMany()
+                    b.HasOne("TJConnector.Postgres.Entities.Product", "Product")
+                        .WithMany("CodeOrders")
                         .HasForeignKey("ProductId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("TJConnector.Postgres.Entities.Product", "Product")
-                        .WithMany("CodeOrders")
-                        .HasForeignKey("ProductId1");
 
                     b.Navigation("Product");
                 });
@@ -344,15 +338,11 @@ namespace TJConnector.Api.Migrations
 
             modelBuilder.Entity("TJConnector.Postgres.Entities.Package", b =>
                 {
-                    b.HasOne("TJConnector.Postgres.Entities.PackageRequest", null)
-                        .WithMany()
+                    b.HasOne("TJConnector.Postgres.Entities.PackageRequest", "PackageRequest")
+                        .WithMany("Packages")
                         .HasForeignKey("PackageRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.HasOne("TJConnector.Postgres.Entities.PackageRequest", "PackageRequest")
-                        .WithMany("Packages")
-                        .HasForeignKey("PackageRequestId1");
 
                     b.Navigation("PackageRequest");
                 });

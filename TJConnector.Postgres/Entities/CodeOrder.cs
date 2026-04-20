@@ -5,7 +5,7 @@
         public int Id { get; set; }
         public int Type { get; set; }
 
-        public int ProductId { get; set; }
+        public int? ProductId { get; set; }
         public Product? Product { get; set; }
 
         public int Count { get; set; }
@@ -18,6 +18,8 @@
         public string? StatusMessage { get; set; }
 
         public CodeOrderContent? Content { get; set; }
+
+        public int? BatchId { get; set; }
     }
     public class StatusHistory
     {
