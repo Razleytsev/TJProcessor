@@ -28,16 +28,16 @@ public class ExternalDbContent : IConsumer<ExternalDbContentBody3>
         package.Status = -3;
         _context.Entry(package).State = EntityState.Modified;
         await _context.SaveChangesAsync();
-        _logger.LogInformation($"Retreiving content from external database: {package.SSCCCode}");
+        _logger.LogInformation("Retrieving content for MC {Code} (SSCC {Sscc}) from external database", package.Code, package.SSCCCode);
 
         var dbContent = await _externalDBData.GetContainerContent(package.Code);
 
         if (dbContent == null)
         {
-            package.Comment = "Content of the package not found in external database";
+            package.Comment = $"Content for MC {package.Code} not found in external database";
             package.AddStatus(-3);
             _context.Entry(package).State = EntityState.Modified;
-            _logger.LogWarning($"Content of the package not found in external database: {package.SSCCCode}");
+            _logger.LogWarning("Content for MC {Code} not found in external database (SSCC {Sscc})", package.Code, package.SSCCCode);
             await _context.SaveChangesAsync();
             return;
         }

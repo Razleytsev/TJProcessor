@@ -69,7 +69,7 @@ namespace TJConnector.StateSystem.Services.Implementation
 
                     var result = new DbContainerStatus() { Content = statusResult.ToList() };
 
-                    return new CustomResult<DbContainerStatus> { Content = result, Success = false, Message = "OK" };
+                    return new CustomResult<DbContainerStatus> { Content = result, Success = true, Message = "OK" };
                 }
             }
             catch (Exception ex)
