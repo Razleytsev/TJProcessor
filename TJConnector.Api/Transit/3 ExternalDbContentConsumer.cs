@@ -32,12 +32,12 @@ public class ExternalDbContent : IConsumer<ExternalDbContentBody3>
 
         var dbContent = await _externalDBData.GetContainerContent(package.Code);
 
-        if (dbContent == null)
+        if (!dbContent.Success || dbContent.Content == null || dbContent.Content.Count == 0)
         {
-            package.Comment = $"Content for MC {package.Code} not found in external database";
+            package.Comment = $"Content for MC {package.Code} not found in external database: {dbContent.Message}";
             package.AddStatus(-3);
             _context.Entry(package).State = EntityState.Modified;
-            _logger.LogWarning("Content for MC {Code} not found in external database (SSCC {Sscc})", package.Code, package.SSCCCode);
+            _logger.LogWarning("Content for MC {Code} not found in external database (SSCC {Sscc}): {Error}", package.Code, package.SSCCCode, dbContent.Message);
             await _context.SaveChangesAsync();
             return;
         }

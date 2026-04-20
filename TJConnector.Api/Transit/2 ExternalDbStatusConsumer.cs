@@ -32,10 +32,10 @@ public class ExternalDbCheck : IConsumer<ExternalDbBody2>
 
         if (dbInfoList.Content is null)
         {
-            package.Comment = $"SQL query error for MC {package.Code}";
+            package.Comment = $"SQL query error for MC {package.Code}: {dbInfoList.Message}";
             package.AddStatus(-2);
             _context.Entry(package).State = EntityState.Modified;
-            _logger.LogWarning("SQL query error for MC {Code} (SSCC {Sscc})", package.Code, package.SSCCCode);
+            _logger.LogWarning("SQL query error for MC {Code} (SSCC {Sscc}): {Error}", package.Code, package.SSCCCode, dbInfoList.Message);
             await _context.SaveChangesAsync();
             return;
         }
