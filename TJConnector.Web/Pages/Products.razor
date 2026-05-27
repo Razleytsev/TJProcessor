@@ -8,7 +8,7 @@
 </div>
 
 <div class="container">
-    <div class="table-container" style="width: 75%;font-size: 12px;">
+    <div class="table-container" style="flex:1;min-width:0;font-size: 12px;">
         @if (products == null)
         {
             <div class="loading-state">Loading products…</div>
@@ -21,26 +21,23 @@
                          SelectedItem="selectedProduct" />
         }
     </div>
-    <div class="details-container" style="width: 25%;font-size: 12px;">
-        @if (selectedProductExternalInfo != null)
-        {
-            <h4>External Product Information</h4>
-            <div>
-                <p><strong>Name:</strong> @selectedProductExternalInfo.name</p>
-                <p><strong>GTIN:</strong> @selectedProductExternalInfo.gtin</p>
-                <p><strong>Manufacturer:</strong> @selectedProductExternalInfo.manufacturerName</p>
-                <p><strong>Weight (Gross):</strong> @selectedProductExternalInfo.weightGross</p>
-                <p><strong>Dimensions:</strong> @selectedProductExternalInfo.length x @selectedProductExternalInfo.width x @selectedProductExternalInfo.height</p>
-                <p><strong>Storage Conditions:</strong> @selectedProductExternalInfo.storageConditions</p>
-                <p><strong>Composition:</strong> @selectedProductExternalInfo.composition</p>
-                <p><strong>Country of Origin:</strong> @selectedProductExternalInfo.productCountryOfOrigin</p>
+    @if (selectedProductExternalInfo != null)
+    {
+        <div class="details-container" style="flex:0 0 380px;font-size: 12px;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h4 style="margin:0;font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);">External Product Information</h4>
+                <button class="btn-icon" aria-label="Close details" title="Close" @onclick="ClearSelection">×</button>
             </div>
-        }
-        else
-        {
-            <p>Select a product to view external information.</p>
-        }
-    </div>
+            <p><strong>Name:</strong> @selectedProductExternalInfo.name</p>
+            <p><strong>GTIN:</strong> @selectedProductExternalInfo.gtin</p>
+            <p><strong>Manufacturer:</strong> @selectedProductExternalInfo.manufacturerName</p>
+            <p><strong>Weight (Gross):</strong> @selectedProductExternalInfo.weightGross</p>
+            <p><strong>Dimensions:</strong> @selectedProductExternalInfo.length x @selectedProductExternalInfo.width x @selectedProductExternalInfo.height</p>
+            <p><strong>Storage Conditions:</strong> @selectedProductExternalInfo.storageConditions</p>
+            <p><strong>Composition:</strong> @selectedProductExternalInfo.composition</p>
+            <p><strong>Country of Origin:</strong> @selectedProductExternalInfo.productCountryOfOrigin</p>
+        </div>
+    }
 </div>
 
 @code {
@@ -82,6 +79,12 @@
         {
             Console.WriteLine($"Error fetching products: {ex.Message}");
         }
+    }
+
+    private void ClearSelection()
+    {
+        selectedProduct = null;
+        selectedProductExternalInfo = null;
     }
 
     private async Task OnProductClick(Product product)

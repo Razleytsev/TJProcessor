@@ -14,29 +14,30 @@
 @* <button class="btn btn-primary" style="font-size: 14px;" @onclick="ShowCreateOrderModal">Create New Order</button> *@
 
 <div class="container">
-    <div class="table-container" style="font-size: 12px;">
+    <div class="table-container" style="flex:1;min-width:0;font-size: 12px;">
         @if (orders == null)
         {
-            <p>Loading...</p>
+            <div class="loading-state">Loading orders…</div>
         }
         else
         {
             <CustomTable Items="orders" Columns="columns" OnRowClick="EventCallback.Factory.Create<CodeOrder>(this, OnOrderClick)" SelectedItem="selectedOrder" />
         }
     </div>
-    <div class="details-container" style="font-size: 12px;">
-        @if (selectedOrderInfo != null)
-        {
-            <h4>Order Information</h4>
-            <div>
-                <p><strong>Type:</strong> @GetProductTypeString(selectedOrderInfo.Type)</p>
-                <p><strong>Status:</strong> @GetStatusTypeString(selectedOrderInfo.Status)</p>
-                <p><strong>Gtin:</strong> @selectedOrderInfo.Product?.Gtin</p>
-                <p><strong>Created At:</strong> @LTime(selectedOrderInfo.RecordDate)</p>
-                <p><strong>Count:</strong> @selectedOrderInfo.Count</p>
-                <p><strong>External GUID:</strong> @selectedOrderInfo.ExternalGuid</p>
+    @if (selectedOrderInfo != null)
+    {
+        <div class="details-container" style="flex:0 0 380px;font-size: 12px;">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h4 style="margin:0;font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);">Order Information</h4>
+                <button class="btn-icon" aria-label="Close details" title="Close" @onclick="() => { selectedOrder = null; selectedOrderInfo = null; }">×</button>
             </div>
-            <h5>Status History</h5>
+            <p><strong>Type:</strong> @GetProductTypeString(selectedOrderInfo.Type)</p>
+            <p><strong>Status:</strong> @GetStatusTypeString(selectedOrderInfo.Status)</p>
+            <p><strong>Gtin:</strong> @selectedOrderInfo.Product?.Gtin</p>
+            <p><strong>Created At:</strong> @LTime(selectedOrderInfo.RecordDate)</p>
+            <p><strong>Count:</strong> @selectedOrderInfo.Count</p>
+            <p><strong>External GUID:</strong> @selectedOrderInfo.ExternalGuid</p>
+            <h5 style="font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);margin:1rem 0 0.4rem;">Status History</h5>
             <table class="table table-borderless">
                 <thead>
                     <tr>
@@ -49,22 +50,18 @@
                     {
                         <tr>
                             <td>@GetStatusTypeString(history.Status)</td>
-                            <td>
-                                @LTime(history.StatusDate)
-                            </td>
+                            <td>@LTime(history.StatusDate)</td>
                         </tr>
                     }
                 </tbody>
             </table>
-            <button class="btn btn-secondary" @onclick="ProcessOrder" disabled="@(!IsProcessButtonActive || isProcessing)">Process Order</button>
-            <button class="btn btn-secondary" @onclick="DownloadCodes" disabled="@(!IsDownloadCodesButtonActive || isDownloadingCodes)">Pull Codes</button>
-            <button class="btn btn-secondary" @onclick="DownloadOrderContent" disabled="@(!IsDownloadContentButtonActive || isDownloadingContent)">Download</button>
-        }
-        else
-        {
-            <p>Select an order to view details.</p>
-        }
-    </div>
+            <div class="d-flex gap-2 flex-wrap" style="margin-top:0.85rem;">
+                <button class="btn btn-sm btn-outline" @onclick="ProcessOrder" disabled="@(!IsProcessButtonActive || isProcessing)">Process Order</button>
+                <button class="btn btn-sm btn-outline" @onclick="DownloadCodes" disabled="@(!IsDownloadCodesButtonActive || isDownloadingCodes)">Pull Codes</button>
+                <button class="btn btn-sm btn-primary" @onclick="DownloadOrderContent" disabled="@(!IsDownloadContentButtonActive || isDownloadingContent)">Download</button>
+            </div>
+        </div>
+    }
 </div>
 
 @if (showCreateOrderModal)
