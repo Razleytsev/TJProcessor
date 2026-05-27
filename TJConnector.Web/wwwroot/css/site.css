@@ -303,9 +303,11 @@ h1:focus { outline: none; }
 .page-root-flex {
     display: flex;
     flex-direction: column;
+    width: 100%;
     height: calc(100vh - 60px);
     overflow: hidden;
     background: var(--bg-canvas);
+    box-sizing: border-box;
 }
 
 /* ── Split pane ──────────────────────────────────────────── */
