@@ -13,9 +13,10 @@ builder.Services.AddServerSideBlazor()
         options.MaximumReceiveMessageSize = 1024 * 512;
     });
 
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5166";
 builder.Services.AddScoped(sp => new HttpClient
 {
-    BaseAddress = new Uri("http://localhost:5166")
+    BaseAddress = new Uri(apiBaseUrl)
 });
 
 builder.Services.AddScoped<IProductService, ProductService>();
@@ -46,7 +47,13 @@ app.Use(async (context, next) =>
     await next();
 });
 
-app.UseHttpsRedirection();
+// In container / HTTP-only deployments HTTPS isn't bound; only redirect when
+// we actually have an HTTPS endpoint configured.
+if (!string.IsNullOrEmpty(builder.Configuration["ASPNETCORE_HTTPS_PORTS"])
+    || !string.IsNullOrEmpty(builder.Configuration["ASPNETCORE_HTTPS_PORT"]))
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseStaticFiles();
 

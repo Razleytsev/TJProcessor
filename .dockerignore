@@ -1,0 +1,34 @@
+# Build artefacts
+**/bin
+**/obj
+**/out
+**/publish
+**/.vs
+
+# IDE / scratch
+.vs
+.idea
+.vscode
+*.user
+*.suo
+
+# Tests / e2e
+e2e/node_modules
+e2e/test-results
+e2e/playwright-report
+e2e/.last-run.json
+
+# Docs (not needed inside the image)
+docs
+
+# Local working copies / dumps
+markingCodeemissioncodes*.txt
+
+# Tooling caches
+.claude
+.playwright-mcp
+
+# Git
+.git
+.gitignore
+.gitattributes

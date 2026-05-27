@@ -1,0 +1,78 @@
+# TJProcessor stack — `docker compose up --build`
+# Then open http://localhost:5113 (UI) / http://localhost:5166/swagger (API).
+#
+# Notes:
+# • PostgreSQL data persists in the `tj-postgres-data` named volume.
+# • The API mounts your local TJConnector.Api/appsettings.json read-only so it
+#   can pick up the marking-authority Token + ExternalDb string you already
+#   have on disk (the file is gitignored). The LocalDb connection string is
+#   overridden via env var to point at the postgres service.
+# • SQL Server (ExternalDb) is NOT included — it's optional and only used by
+#   container/info queries. ExternalDb code paths will fail at call time if
+#   you try them, but the UI loads end-to-end without it.
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: tj-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      # Mapped to 55432 on the host — most dev boxes have something already on
+      # 5432, and Docker Desktop on Windows pre-reserves a wide range of nearby
+      # ports. Inside the compose network the API still reaches it on 5432.
+      - "55432:5432"
+    volumes:
+      - tj-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: TJConnector.Api/Dockerfile
+    image: tjprocessor-api:local
+    container_name: tj-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5166
+      # Override LocalDb to point at the postgres service inside the network.
+      ConnectionStrings__LocalDb: "Host=postgres;Port=5432;Database=postgres;Username=postgres;Password=postgres"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5166:5166"
+    volumes:
+      # Reuse your local secrets / token / external-API URL.
+      # If you don't have an appsettings.json yet, copy
+      # docker/appsettings.api.example.json into place first.
+      - ./TJConnector.Api/appsettings.json:/app/appsettings.json:ro
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: TJConnector.Web/Dockerfile
+    image: tjprocessor-web:local
+    container_name: tj-web
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5113
+      # Web → API base address inside the compose network.
+      ApiBaseUrl: http://api:5166
+    depends_on:
+      - api
+    ports:
+      - "5113:5113"
+    restart: unless-stopped
+
+volumes:
+  tj-postgres-data:
+    name: tj-postgres-data

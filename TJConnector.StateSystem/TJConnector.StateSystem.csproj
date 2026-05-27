@@ -11,11 +11,15 @@
     <None Remove="ContainerInfoQuery.sql" />
   </ItemGroup>
 
+  <!-- These two SQL files are gitignored (contain sensitive queries).
+       Include them only when present so fresh checkouts / Docker builds
+       still succeed; the ExternalDb code paths simply fail at call time
+       if the queries aren't there. -->
   <ItemGroup>
-    <Content Include="ContainerContentQuery.sql">
+    <Content Include="ContainerContentQuery.sql" Condition="Exists('ContainerContentQuery.sql')">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="ContainerInfoQuery.sql">
+    <Content Include="ContainerInfoQuery.sql" Condition="Exists('ContainerInfoQuery.sql')">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>

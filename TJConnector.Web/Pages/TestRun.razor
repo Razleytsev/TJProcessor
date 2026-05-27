@@ -430,14 +430,16 @@
         _ => "badge bg-secondary"
     };
 
-    private static string StageBadgeClass(int stage) => stage switch
+    // if/else (not a switch with relational patterns) — Razor parser in older
+    // SDKs chokes on `< 0` inside @code blocks.
+    private static string StageBadgeClass(int stage)
     {
-        100 => "bg-success",
-        -99 => "bg-secondary",
-        < 0 => "bg-danger",
-        0 => "bg-light text-dark",
-        _ => "bg-primary"
-    };
+        if (stage == 100) return "bg-success";
+        if (stage == -99) return "bg-secondary";
+        if (stage < 0)    return "bg-danger";
+        if (stage == 0)   return "bg-light text-dark";
+        return "bg-primary";
+    }
 
     // ── External DB Test ─────────────────────────────────────────────────
     private string dbTestMcNumber = string.Empty;

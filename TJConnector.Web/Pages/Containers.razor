@@ -668,15 +668,17 @@
         return status == 0 ? "Created" : $"Status {status}";
     }
 
-    private static (string css, string label) PkgStatusInfo(int status) => status switch
+    // Note: written as if/else (not a switch with relational patterns) because
+    // the Razor parser in .NET 8/9 SDK chokes on `< 0` inside @code blocks.
+    private static (string css, string label) PkgStatusInfo(int status)
     {
-        < 0  => ("badge-error",      GetStatusLabel(status)),
-          0  => ("badge-created",    "Created"),
-        1 or 2 or 3 => ("badge-info",       GetStatusLabel(status)),
-        >= 4 and <= 11 => ("badge-processing", GetStatusLabel(status)),
-          12 => ("badge-completed",  "Reported"),
-        _    => ("badge-unknown",    $"Status {status}")
-    };
+        if (status < 0)                    return ("badge-error",      GetStatusLabel(status));
+        if (status == 0)                   return ("badge-created",    "Created");
+        if (status >= 1 && status <= 3)    return ("badge-info",       GetStatusLabel(status));
+        if (status >= 4 && status <= 11)   return ("badge-processing", GetStatusLabel(status));
+        if (status == 12)                  return ("badge-completed",  "Reported");
+        return ("badge-unknown", $"Status {status}");
+    }
 
     private static string GetStatusLabel(int s) => s switch
     {
