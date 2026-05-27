@@ -39,7 +39,11 @@
 
 .content-area {
     flex: 1;
+    /* min-height: 0 allows .page-root-flex to shrink within the column;
+       a fallback floor keeps the split-pane divider reachable on very
+       short windows (F10). */
     min-height: 0;
+    min-height: 480px;
     display: flex;
     flex-direction: column;
 }

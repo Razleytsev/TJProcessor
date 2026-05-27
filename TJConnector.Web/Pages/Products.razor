@@ -9,13 +9,16 @@
 
 <div class="container">
     <div class="table-container" style="width: 75%;font-size: 12px;">
-        <CustomTable Items="@(products ?? Enumerable.Empty<Product>())"
-                     Columns="columns"
-                     OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)"
-                     SelectedItem="selectedProduct" />
         @if (products == null)
         {
             <div class="loading-state">Loading products…</div>
+        }
+        else
+        {
+            <CustomTable Items="products"
+                         Columns="columns"
+                         OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)"
+                         SelectedItem="selectedProduct" />
         }
     </div>
     <div class="details-container" style="width: 25%;font-size: 12px;">

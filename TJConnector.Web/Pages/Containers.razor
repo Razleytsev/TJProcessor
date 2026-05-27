@@ -72,7 +72,7 @@
                         @(isReprocessingSingle ? "Reprocessing…" : "Reprocess")
                     </button>
                 }
-                <button class="btn btn-sm btn-secondary" @onclick="ClosePackageDetail">Close</button>
+                <button class="btn btn-sm btn-outline" @onclick="ClosePackageDetail">Close</button>
             </div>
         </div>
     </div>
@@ -96,9 +96,9 @@
                             Paste Code / SSCC pairs (alternating lines)
                         </label>
                         <textarea id="container-paste" class="form-control form-control-sm"
-                                  style="height:280px; font-family:'IBM Plex Mono', monospace; font-size:11px;"
+                                  style="height:280px; font-family:'JetBrains Mono','IBM Plex Mono',monospace; font-size:11px;"
                                   @onchange="HandleManualInputChange"
-                                  placeholder="Code line&#10;SSCC line&#10;Code line&#10;SSCC line…"></textarea>
+                                  placeholder="@("Code line\nSSCC line\nCode line\nSSCC line…")"></textarea>
                         <button class="btn btn-sm btn-outline-secondary mt-2"
                                 @onclick="LoadCodesFromFile">📂 Load from file</button>
                         @if (validationError)
@@ -116,6 +116,14 @@
                                 <tr><th>Code</th><th>SSCC</th><th>✓</th></tr>
                             </thead>
                             <tbody>
+                                @if (packageCouples.Count == 0)
+                                {
+                                    <tr>
+                                        <td colspan="3" class="text-center text-muted py-3" style="font-style:italic;">
+                                            Paste pairs on the left to preview them here.
+                                        </td>
+                                    </tr>
+                                }
                                 @foreach (var p in packageCouples)
                                 {
                                     <tr class="@(p.IsValid ? "" : "table-danger")">
@@ -134,7 +142,7 @@
                 }
             </div>
             <div class="modal-dialog-footer">
-                <button class="btn btn-sm btn-secondary" @onclick="CloseSubmitModal">Cancel</button>
+                <button class="btn btn-sm btn-outline" @onclick="CloseSubmitModal">Cancel</button>
                 <button class="btn btn-sm btn-primary"
                         disabled="@(isSubmitting || validationError || !packageCouples.Any())"
                         @onclick="SubmitContainers">
@@ -151,9 +159,12 @@
     <!-- Header -->
     <div class="page-header">
         <h5 class="mb-0">Submission Requests</h5>
-        <div class="d-flex align-items-center gap-2">
-            @if (isRefreshing) { <span class="loading-spinner" aria-hidden="true" title="Refreshing…"></span> }
-            <span class="text-xs text-muted" title="Auto-refreshes every @refreshInterval s">↻ @refreshInterval s</span>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+            <span class="refresh-pill @(isRefreshing ? "is-refreshing" : "")"
+                  title="Auto-refreshes every @refreshInterval s">
+                <span class="refresh-dot" aria-hidden="true"></span>
+                @refreshInterval s
+            </span>
             <button class="btn btn-sm btn-primary" @onclick="ShowSubmitModal">+ Submit Containers</button>
         </div>
     </div>
@@ -163,9 +174,15 @@
 
         <!-- ── TOP: requests list ─────────────────────────────── -->
         <div class="split-pane-top" style="flex: 0 0 @(topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
-            <div class="pane-toolbar">
-                <span class="pane-title">Requests (@(requests?.Count() ?? 0))</span>
-            </div>
+            @{
+                var requestCount = requests?.Count() ?? 0;
+            }
+            @if (requests == null || requestCount > 0)
+            {
+                <div class="pane-toolbar">
+                    <span class="pane-title">Requests (@requestCount)</span>
+                </div>
+            }
             <div class="pane-scroll">
                 @if (requests == null)
                 {

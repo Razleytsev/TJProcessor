@@ -24,13 +24,13 @@
     }
     else
     {
-        <h5>Production Contour Test Run</h5>
-        <div class="text-xs text-muted" style="margin-bottom:8px;">
+        <h5 style="margin:0 0 0.4rem;font-size:1.35rem;font-weight:600;letter-spacing:-0.015em;color:var(--text-strong);">Production Contour Test Run</h5>
+        <p class="text-muted" style="margin:0 0 1rem;font-size:0.85rem;">
             Drives the full marking-authority chain (pack → bundle → mastercase → application → aggregation) against the
             real external system. Real codes are minted and cannot be reverted.
-        </div>
+        </p>
 
-        <div class="card" style="padding:12px;background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;">
+        <div class="info-card">
             <div class="row g-2">
                 <div class="col-md-6">
                     <label class="form-label form-label-sm">Pack GTIN / Product</label>
@@ -112,15 +112,15 @@
             }
         </div>
 
-        <div>
-            <h6 style="margin-top:16px;">Recent runs <span class="text-xs text-muted">(auto-refresh 2 s)</span></h6>
+        <div class="info-card" style="margin-top:16px;">
+            <h6 style="margin:0 0 0.85rem;font-size:0.85rem;font-weight:600;">Recent runs <span class="text-xs text-muted" style="font-weight:400;">(auto-refresh 2 s)</span></h6>
             @if (runs == null)
             {
-                <div>Loading…</div>
+                <div class="loading-state">Loading…</div>
             }
             else if (runs.Count == 0)
             {
-                <div class="text-muted text-xs">No runs yet.</div>
+                <div class="empty-state">No runs yet.</div>
             }
             else
             {
@@ -246,8 +246,8 @@
         </div>
 
         <!-- ── External DB Test ────────────────────────────────── -->
-        <div class="card" style="padding:12px;background:#f8f9fa;border:1px solid #e9ecef;border-radius:6px;margin-top:16px;">
-            <h6>External Database Connection Test</h6>
+        <div class="info-card" style="margin-top:16px;">
+            <h6 style="margin:0 0 0.85rem;font-size:0.85rem;font-weight:600;text-transform:none;letter-spacing:0;color:var(--text-strong);">External Database Connection Test</h6>
             <div class="text-xs text-muted" style="margin-bottom:8px;">
                 Test SQL Server connection by querying container hierarchy. The MC number does not need to be valid for this market — the query will execute and return whatever the external DB has (or an error if the connection fails).
             </div>

@@ -31,7 +31,7 @@
             <p id="confirm-title" class="mb-3">@confirmMessage</p>
             <div class="d-flex gap-2 justify-content-end">
                 <button class="btn btn-sm btn-danger" @onclick="ConfirmYes">Yes, Cancel</button>
-                <button class="btn btn-sm btn-secondary" @onclick="() => showConfirm = false" autofocus>No</button>
+                <button class="btn btn-sm btn-outline" @onclick="() => showConfirm = false" autofocus>No</button>
             </div>
         </div>
     </div>
@@ -43,9 +43,12 @@
     <!-- Header -->
     <div class="page-header">
         <h5 class="mb-0">Order Batches</h5>
-        <div class="d-flex align-items-center gap-2">
-            @if (isRefreshing) { <span class="loading-spinner" aria-hidden="true" title="Refreshing…"></span> }
-            <span class="text-xs text-muted" title="Auto-refreshes every @refreshInterval s">↻ @refreshInterval s</span>
+        <div class="d-flex align-items-center gap-2 ms-auto">
+            <span class="refresh-pill @(isRefreshing ? "is-refreshing" : "")"
+                  title="Auto-refreshes every @refreshInterval s">
+                <span class="refresh-dot" aria-hidden="true"></span>
+                @refreshInterval s
+            </span>
             <button class="btn btn-sm btn-primary" @onclick="ShowOrderCodesModal">+ Order Codes</button>
         </div>
     </div>
@@ -55,9 +58,15 @@
 
         <!-- ── TOP: batch list ───────────────────────────────── -->
         <div class="split-pane-top" style="flex: 0 0 @(topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
-            <div class="pane-toolbar">
-                <span class="pane-title">Batches (@(batches?.Count() ?? 0))</span>
-            </div>
+            @{
+                var batchCount = batches?.Count() ?? 0;
+            }
+            @if (batches == null || batchCount > 0)
+            {
+                <div class="pane-toolbar">
+                    <span class="pane-title">Batches (@batchCount)</span>
+                </div>
+            }
             <div class="pane-scroll">
                 @if (batches == null)
                 {
@@ -342,7 +351,7 @@
                 }
             </div>
             <div class="modal-dialog-footer">
-                <button class="btn btn-sm btn-secondary" @onclick="CloseModal">Cancel</button>
+                <button class="btn btn-sm btn-outline" @onclick="CloseModal">Cancel</button>
                 <button class="btn btn-sm btn-primary" disabled="@isSubmitting" @onclick="SubmitOrder">
                     @(isSubmitting ? "Creating…" : "Create Order")
                 </button>

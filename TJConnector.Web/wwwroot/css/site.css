@@ -245,6 +245,29 @@ textarea:focus-visible,
 .form-select:hover:not(:disabled) { border-color: var(--text-faint); }
 .form-control::placeholder { color: var(--text-faint); }
 
+/* F6: restore a caret on <select> so it doesn't look like a text input.
+   Bootstrap's stylesheet ships one but our overrides flattened the
+   appearance — bring it back with an inline SVG background-image. */
+.form-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='4,6 8,10 12,6' /%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    background-size: 14px 14px;
+    padding-right: 2rem;
+}
+/* F7: disabled selects look obviously read-only. */
+.form-select:disabled,
+.form-control:disabled {
+    background-color: var(--bg-surface-alt);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    border-color: var(--border-subtle);
+}
+.form-select:disabled { background-image: none; }
+
 .form-control.is-invalid {
     border-color: #b42318;
     box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.15);
@@ -344,6 +367,34 @@ textarea:focus-visible,
     background: transparent;
     border-bottom: none;
     flex-shrink: 0;
+}
+
+/* F5: auto-refresh status as a subtle pill. Used inline in the page
+   header on /batches and /containers. */
+.refresh-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.55rem;
+    background: var(--bg-surface-alt);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-pill);
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    font-variant-numeric: tabular-nums;
+}
+.refresh-pill .refresh-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--text-faint);
+    flex: 0 0 6px;
+}
+.refresh-pill.is-refreshing .refresh-dot {
+    background: var(--accent);
+    animation: pulse-dot 1.2s ease-in-out infinite;
 }
 .page-header h1,
 .page-header h2,
@@ -453,12 +504,13 @@ textarea:focus-visible,
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.55rem 0.85rem;
+    padding: 0.5rem 0.85rem;
     background: var(--bg-surface-alt);
     border-bottom: 1px solid var(--border-subtle);
     flex-shrink: 0;
     flex-wrap: wrap;
-    min-height: 36px;
+    /* F18: tall enough that adding/removing a button doesn't shift layout. */
+    min-height: 42px;
 }
 .pane-title {
     font-size: 0.72rem;
@@ -771,9 +823,8 @@ textarea:focus-visible,
    ============================================================ */
 .empty-state {
     background: var(--bg-surface);
-    border: 1px dashed var(--border);
     border-radius: var(--radius-sm);
-    padding: 1.25rem 1.5rem;
+    padding: 1.5rem;
     text-align: center;
     color: var(--text-muted);
     font-size: 0.85rem;
@@ -781,6 +832,13 @@ textarea:focus-visible,
 }
 .empty-state p { margin: 0 0 0.5rem; }
 .empty-state p:last-child { margin: 0; }
+
+/* Use the bordered version only when the empty-state stands alone, NOT
+   when it's already nested inside a card-style pane (F4). */
+.empty-state.bordered,
+.content-area > .empty-state {
+    border: 1px dashed var(--border);
+}
 
 .loading-state {
     display: flex;
@@ -1266,7 +1324,13 @@ textarea:focus-visible,
     line-height: 1;
     cursor: pointer;
     color: var(--text-muted);
-    padding: 2px 6px;
+    /* F16: WCAG-compliant 32×32 hit area (still visually compact). */
+    width: 32px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     border-radius: var(--radius-xs);
     transition: background 0.10s ease, color 0.10s ease;
 }
@@ -1444,7 +1508,7 @@ code {
     white-space: nowrap; border: 0;
 }
 
-/* CustomTable filter input */
+/* CustomTable filter input — F19: add leading magnifier glyph. */
 .custom-table-filter {
     padding: 0.5rem 0.85rem;
     background: var(--bg-surface-alt);
@@ -1453,13 +1517,17 @@ code {
 .custom-table-filter input[type="search"] {
     width: 100%;
     max-width: 320px;
-    padding: 0.35rem 0.6rem;
+    padding: 0.35rem 0.6rem 0.35rem 1.85rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     font-size: 0.82rem;
-    background: var(--bg-surface);
+    background-color: var(--bg-surface);
     color: var(--text);
     font-family: inherit;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2364748b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='7' cy='7' r='4.5'/%3E%3Cpath d='m10.4 10.4 3 3'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: 0.55rem center;
+    background-size: 14px 14px;
 }
 .custom-table-filter input[type="search"]:focus {
     outline: 2px solid var(--accent);
