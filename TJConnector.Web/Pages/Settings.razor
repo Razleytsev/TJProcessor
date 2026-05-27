@@ -1,0 +1,195 @@
+@page "/settings"
+@attribute [Authorize(Roles = "Admin")]
+@using System.Net.Http.Json
+@using Microsoft.Extensions.Configuration
+@inject IConfiguration Configuration
+@inject HttpClient Http
+
+<PageTitle>Settings · Abdulla</PageTitle>
+
+<div class="page-header">
+    <h1 class="page-title mb-0">Settings</h1>
+    <button class="btn btn-outline btn-sm ms-auto" @onclick="ReloadAsync" disabled="@loading">
+        @(loading ? "Reloading…" : "Reload")
+    </button>
+</div>
+
+<div class="alert alert-info" style="margin: 0 1.75rem 1rem;">
+    <p>
+        Read-only snapshot of the running configuration. Editing requires updating
+        <code>appsettings.json</code> on the corresponding host and restarting the service.
+        Sensitive values (Token, connection strings) are masked by default — click <strong>Show</strong> to reveal.
+    </p>
+</div>
+
+@if (loadError is not null)
+{
+    <div class="alert alert-error" style="margin: 0 1.75rem 1rem;">
+        <p>@loadError</p>
+        <button class="btn btn-outline btn-sm" @onclick="ReloadAsync" style="margin-top:0.4rem;">Retry</button>
+    </div>
+}
+
+<div style="padding: 0 1.75rem 1.5rem;">
+    @* Web-side config (env vars, this Blazor host's appsettings) *@
+    <div class="info-card">
+        <h5>Web Host</h5>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:32%;">Key</th>
+                    <th style="width:55%;">Value</th>
+                    <th style="width:13%;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var row in WebRows)
+                {
+                    @RenderRow(row)
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @* API-side config (fetched from /api/settings) *@
+    @if (apiSections is null && loadError is null)
+    {
+        <div class="info-card">
+            <div class="loading-state">Loading API settings…</div>
+        </div>
+    }
+    else if (apiSections is not null)
+    {
+        @foreach (var grp in apiSections)
+        {
+            <div class="info-card">
+                <h5>@grp.Title <span class="text-muted text-xs" style="font-weight:400;">— API host</span></h5>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th style="width:32%;">Key</th>
+                            <th style="width:55%;">Value</th>
+                            <th style="width:13%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in grp.Rows)
+                        {
+                            @RenderRow(new SettingRow(row.Key, row.Value, row.IsSensitive))
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private readonly HashSet<string> revealed = new(StringComparer.Ordinal);
+    private List<ApiSettingSection>? apiSections;
+    private string? loadError;
+    private bool loading;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        loading = true;
+        loadError = null;
+        try
+        {
+            var dto = await Http.GetFromJsonAsync<ApiSettingsDto>("api/settings");
+            apiSections = dto?.Sections ?? new List<ApiSettingSection>();
+        }
+        catch (Exception ex)
+        {
+            loadError = $"Failed to load API settings: {ex.Message}";
+            apiSections = null;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void ToggleReveal(string key)
+    {
+        if (!revealed.Add(key)) revealed.Remove(key);
+    }
+
+    private RenderFragment RenderRow(SettingRow row) =>
+        @<tr>
+            <td>
+                @row.Key
+                @if (row.IsSensitive)
+                {
+                    <span class="badge badge-warning" style="margin-left:6px;" title="Sensitive — masked by default">S</span>
+                }
+            </td>
+            <td>
+                @if (row.IsSensitive)
+                {
+                    <span class="param-value sensitive">
+                        @(revealed.Contains(row.Key) ? DisplayValue(row.Value) : MaskValue(row.Value))
+                    </span>
+                }
+                else
+                {
+                    <span class="param-value">@DisplayValue(row.Value)</span>
+                }
+            </td>
+            <td>
+                @if (row.IsSensitive)
+                {
+                    <button class="btn-icon" @onclick="() => ToggleReveal(row.Key)"
+                            title="@(revealed.Contains(row.Key) ? "Hide value" : "Show value")"
+                            aria-label="@(revealed.Contains(row.Key) ? $"Hide value of {row.Key}" : $"Show value of {row.Key}")"
+                            aria-pressed="@(revealed.Contains(row.Key) ? "true" : "false")">
+                        @(revealed.Contains(row.Key) ? "Hide" : "Show")
+                    </button>
+                }
+                else
+                {
+                    <span class="text-muted text-xs">—</span>
+                }
+            </td>
+        </tr>;
+
+    private record SettingRow(string Key, string Value, bool IsSensitive);
+
+    private List<SettingRow> WebRows => new()
+    {
+        new("ApiBaseUrl",                            Configuration["ApiBaseUrl"] ?? "(default: http://localhost:5166)", false),
+        new("ASPNETCORE_ENVIRONMENT",                Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "", false),
+        new("ASPNETCORE_URLS",                       Environment.GetEnvironmentVariable("ASPNETCORE_URLS") ?? "", false),
+        new("Logging:LogLevel:Default",              Configuration["Logging:LogLevel:Default"] ?? "Information", false),
+        new("Logging:LogLevel:Microsoft.AspNetCore", Configuration["Logging:LogLevel:Microsoft.AspNetCore"] ?? "Warning", false),
+    };
+
+    private static string MaskValue(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return "—";
+        if (value.Length <= 4) return new string('•', value.Length);
+        return new string('•', Math.Min(value.Length - 4, 32)) + value[^4..];
+    }
+
+    private static string DisplayValue(string value)
+        => string.IsNullOrEmpty(value) ? "—" : value;
+
+    // ── DTO mirrors TJConnector.Api.Controllers.SettingsDto ─────────
+    private class ApiSettingsDto
+    {
+        public List<ApiSettingSection> Sections { get; set; } = new();
+    }
+    private class ApiSettingSection
+    {
+        public string Title { get; set; } = string.Empty;
+        public List<ApiSettingRow> Rows { get; set; } = new();
+    }
+    private class ApiSettingRow
+    {
+        public string Key { get; set; } = string.Empty;
+        public string Value { get; set; } = string.Empty;
+        public bool IsSensitive { get; set; }
+    }
+}
