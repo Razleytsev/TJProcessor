@@ -595,6 +595,19 @@ textarea:focus-visible,
 .table-sm td, .table-sm th { padding: 0.5rem 0.7rem; }
 .table-xs-font td, .table-xs-font th { font-size: 0.78rem; }
 
+/* Column-width helpers — applied via class on <th>/<td> so percentage
+   widths hint the browser to distribute space evenly instead of dumping
+   it all into the last (Date) column. Without these, a 6-column table
+   with short data ends up with one fat right column = looks "25% empty". */
+.table .col-id     { width: 4%;  white-space: nowrap; }
+.table .col-type   { width: 7%;  white-space: nowrap; }
+.table .col-gtin   { width: 12%; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.table .col-num    { width: 8%;  text-align: right; font-variant-numeric: tabular-nums; }
+.table .col-user   { width: 10%; white-space: nowrap; }
+.table .col-date   { width: 12%; white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; }
+.table .col-status { width: 10%; white-space: nowrap; }
+.table .col-actions{ width: 8%;  text-align: right; white-space: nowrap; }
+
 .cell-actions { white-space: nowrap; }
 .cell-guid {
     font-size: 0.72rem;
