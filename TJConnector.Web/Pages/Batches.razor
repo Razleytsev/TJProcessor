@@ -8,23 +8,30 @@
 @inject IMetadataService MetadataService
 @inject IJSRuntime JSRuntime
 
+<PageTitle>Order Batches · Abdulla</PageTitle>
+
 <!-- ── Toast container ──────────────────────────────────────── -->
-<div class="toast-container">
+<div class="toast-container" aria-live="polite" aria-atomic="true">
     @foreach (var t in toasts)
     {
-        <div class="toast @t.CssClass">@t.Message</div>
+        <div class="toast @t.CssClass" role="status">
+            <span class="toast-msg">@t.Message</span>
+            <button class="toast-close" type="button"
+                    aria-label="Dismiss notification"
+                    @onclick="() => DismissToast(t)">×</button>
+        </div>
     }
 </div>
 
 <!-- ── Confirm dialog ────────────────────────────────────────── -->
 @if (showConfirm)
 {
-    <div class="modal-overlay">
-        <div class="confirm-box">
-            <p class="mb-3">@confirmMessage</p>
+    <div class="modal-overlay" tabindex="-1" @onkeydown="OnConfirmKey">
+        <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+            <p id="confirm-title" class="mb-3">@confirmMessage</p>
             <div class="d-flex gap-2 justify-content-end">
                 <button class="btn btn-sm btn-danger" @onclick="ConfirmYes">Yes, Cancel</button>
-                <button class="btn btn-sm btn-secondary" @onclick="() => showConfirm = false">No</button>
+                <button class="btn btn-sm btn-secondary" @onclick="() => showConfirm = false" autofocus>No</button>
             </div>
         </div>
     </div>
@@ -37,8 +44,8 @@
     <div class="page-header">
         <h5 class="mb-0">Order Batches</h5>
         <div class="d-flex align-items-center gap-2">
-            @if (isRefreshing) { <span class="loading-spinner" title="Refreshing…"></span> }
-            <span class="text-xs text-muted">↻ @refreshInterval s</span>
+            @if (isRefreshing) { <span class="loading-spinner" aria-hidden="true" title="Refreshing…"></span> }
+            <span class="text-xs text-muted" title="Auto-refreshes every @refreshInterval s">↻ @refreshInterval s</span>
             <button class="btn btn-sm btn-primary" @onclick="ShowOrderCodesModal">+ Order Codes</button>
         </div>
     </div>
@@ -97,7 +104,9 @@
                                         @if (b.Status == 2)
                                         {
                                             <button class="btn-xs btn btn-outline-success"
-                                                    @onclick="() => DownloadBatch(b)">⬇</button>
+                                                    aria-label="Download batch @b.Id"
+                                                    title="Download codes"
+                                                    @onclick="() => DownloadBatch(b)">↓</button>
                                         }
                                         @if (b.Status == -1)
                                         {
@@ -141,7 +150,7 @@
                     @if (selectedBatch.Status == 2 && selectedBatchDto != null)
                     {
                         <button class="btn btn-sm btn-outline-success ms-auto"
-                                @onclick="() => DownloadBatch(selectedBatch)">⬇ Download</button>
+                                @onclick="() => DownloadBatch(selectedBatch)">↓ Download</button>
                     }
                     else if (selectedBatch.Status == 0 || selectedBatch.Status == 1)
                     {
@@ -223,18 +232,19 @@
 <!-- ── "Order Codes" Modal ───────────────────────────────────── -->
 @if (showModal)
 {
-    <div class="modal-overlay" @onmousedown="CloseModal">
-        <div class="modal-dialog-box" @onmousedown:stopPropagation="true">
+    <div class="modal-overlay" tabindex="-1" @onmousedown="CloseModal" @onkeydown="OnModalKey">
+        <div class="modal-dialog-box" role="dialog" aria-modal="true" aria-labelledby="order-codes-title"
+             @onmousedown:stopPropagation="true">
             <div class="modal-dialog-header">
-                <span class="modal-dialog-title">Order Codes</span>
-                <button class="modal-close-btn" @onclick="CloseModal">×</button>
+                <span class="modal-dialog-title" id="order-codes-title">Order Codes</span>
+                <button class="modal-close-btn" type="button" aria-label="Close dialog" @onclick="CloseModal">×</button>
             </div>
             <div class="modal-dialog-body">
 
                 <!-- Type -->
                 <div class="mb-2">
-                    <label class="form-label form-label-sm">Type</label>
-                    <select class="form-select form-select-sm" @onchange="OnTypeChange">
+                    <label class="form-label form-label-sm" for="fld-type">Type</label>
+                    <select id="fld-type" class="form-select form-select-sm" @onchange="OnTypeChange">
                         <option value="0" selected="@(selectedTypeVal == 0)">Pack</option>
                         <option value="1" selected="@(selectedTypeVal == 1)">Bundle</option>
                         <option value="3" selected="@(selectedTypeVal == 3)">Mastercase</option>
@@ -245,8 +255,8 @@
                 @if (selectedTypeVal != 3)
                 {
                     <div class="mb-2" style="position:relative;">
-                        <label class="form-label form-label-sm">GTIN / Product Name</label>
-                        <input class="form-control form-control-sm"
+                        <label class="form-label form-label-sm" for="fld-gtin">GTIN / Product Name</label>
+                        <input id="fld-gtin" class="form-control form-control-sm"
                                placeholder="Type to search…"
                                value="@gtinInput"
                                @oninput="OnGtinInput" />
@@ -270,13 +280,14 @@
 
                 <!-- Codes count -->
                 <div class="mb-2">
-                    <label class="form-label form-label-sm">
-                        Codes Count <span class="text-danger">*</span>
+                    <label class="form-label form-label-sm" for="fld-count">
+                        Codes Count <span class="required-mark" aria-hidden="true">*</span>
                     </label>
-                    <input type="number" class="form-control form-control-sm @(!string.IsNullOrEmpty(codesCountError) ? "is-invalid" : "")"
+                    <input id="fld-count" type="number" class="form-control form-control-sm @(!string.IsNullOrEmpty(codesCountError) ? "is-invalid" : "")"
                            min="1"
                            value="@codesCountInput"
-                           @oninput="OnCodesCountInput" />
+                           @oninput="OnCodesCountInput"
+                           aria-required="true" />
                     @if (!string.IsNullOrEmpty(codesCountError))
                     {
                         <div class="invalid-feedback">@codesCountError</div>
@@ -285,8 +296,8 @@
 
                 <!-- Factory -->
                 <div class="mb-2">
-                    <label class="form-label form-label-sm">Factory</label>
-                    <select class="form-select form-select-sm"
+                    <label class="form-label form-label-sm" for="fld-factory">Factory</label>
+                    <select id="fld-factory" class="form-select form-select-sm"
                             disabled="@((factories?.Count() ?? 0) <= 1)"
                             @bind="selectedFactoryId">
                         <option value="0">— Select Factory —</option>
@@ -303,8 +314,8 @@
 
                 <!-- Marking Line -->
                 <div class="mb-2">
-                    <label class="form-label form-label-sm">Marking Line</label>
-                    <select class="form-select form-select-sm"
+                    <label class="form-label form-label-sm" for="fld-line">Marking Line</label>
+                    <select id="fld-line" class="form-select form-select-sm"
                             disabled="@((markingLines?.Count() ?? 0) <= 1)"
                             @bind="selectedMarkingLineId">
                         <option value="0">— Select Line —</option>
@@ -321,8 +332,8 @@
 
                 <!-- Description -->
                 <div class="mb-2">
-                    <label class="form-label form-label-sm">Description</label>
-                    <input class="form-control form-control-sm" @bind="modalForm.Description" />
+                    <label class="form-label form-label-sm" for="fld-description">Description</label>
+                    <input id="fld-description" class="form-control form-control-sm" @bind="modalForm.Description" />
                 </div>
 
                 @if (!string.IsNullOrEmpty(modalError))
@@ -582,6 +593,16 @@
 
     private void CloseModal() => showModal = false;
 
+    private void OnModalKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseModal();
+    }
+
+    private void OnConfirmKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") showConfirm = false;
+    }
+
     private void OnTypeChange(ChangeEventArgs e)
     {
         selectedTypeVal       = int.TryParse(e.Value?.ToString(), out var v) ? v : 0;
@@ -696,8 +717,17 @@
         var entry = new ToastEntry(message, cssClass);
         toasts.Add(entry);
         await InvokeAsync(StateHasChanged);
-        await Task.Delay(4000);
+        var lifetimeMs = cssClass == "toast-error" ? 8000 : 4000;
+        await Task.Delay(lifetimeMs);
+        if (toasts.Contains(entry))
+        {
+            toasts.Remove(entry);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void DismissToast(ToastEntry entry)
+    {
         toasts.Remove(entry);
-        await InvokeAsync(StateHasChanged);
     }
 }

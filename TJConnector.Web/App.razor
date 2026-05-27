@@ -4,9 +4,17 @@
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
-        <PageTitle>Not found</PageTitle>
+        <PageTitle>Page not found · Abdulla</PageTitle>
         <LayoutView Layout="@typeof(MainLayout)">
-            <p role="alert">Sorry, there's nothing at this address.</p>
+            <div class="not-found-page" role="alert">
+                <div class="not-found-code">404</div>
+                <h1 class="not-found-title">Page not found</h1>
+                <p class="not-found-body">
+                    The page you’re looking for doesn’t exist or was moved.
+                    Use the navigation on the left, or go back to the home page.
+                </p>
+                <a class="btn btn-primary" href="/">Go to home</a>
+            </div>
         </LayoutView>
     </NotFound>
 </Router>

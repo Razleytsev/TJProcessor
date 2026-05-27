@@ -37,6 +37,20 @@ window.downloadFileFromStream = async (fileName, contentStreamReference) => {
     URL.revokeObjectURL(url);
 };
 
+// Global Escape → close the topmost modal-overlay by clicking its close
+// or its secondary ("No" / "Cancel") button. This is the cheapest way to
+// give every modal Esc-to-close without each page wiring its own handler.
+document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const overlays = document.querySelectorAll('.modal-overlay');
+    if (overlays.length === 0) return;
+    const top = overlays[overlays.length - 1];
+    const closeBtn = top.querySelector('.modal-close-btn')
+                 || top.querySelector('button.btn-secondary')
+                 || top.querySelector('button');
+    if (closeBtn) closeBtn.click();
+});
+
 window.initSplitPane = (containerId, dividerId, dotnetRef) => {
     const container = document.getElementById(containerId);
     const divider = document.getElementById(dividerId);

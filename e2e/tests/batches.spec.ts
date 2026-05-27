@@ -48,6 +48,6 @@ test.describe('Order Batches page', () => {
     const input = page.getByLabel('Codes Count');
     await input.fill('0');
     await page.getByRole('button', { name: 'Create Order' }).click();
-    await expect(page.getByText(/greater than 0|Codes count/i)).toBeVisible();
+    await expect(page.getByText(/greater than 0/i).first()).toBeVisible();
   });
 });

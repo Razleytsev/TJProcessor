@@ -5,22 +5,30 @@
 @inject IPackageRequestService RequestService
 @inject IJSRuntime JSRuntime
 
+<PageTitle>Submission Requests · Abdulla</PageTitle>
+
 <!-- ── Toasts ─────────────────────────────────────────────────── -->
-<div class="toast-container">
+<div class="toast-container" aria-live="polite" aria-atomic="true">
     @foreach (var t in toasts)
     {
-        <div class="toast @t.CssClass">@t.Message</div>
+        <div class="toast @t.CssClass" role="status">
+            <span class="toast-msg">@t.Message</span>
+            <button class="toast-close" type="button"
+                    aria-label="Dismiss notification"
+                    @onclick="() => DismissToast(t)">×</button>
+        </div>
     }
 </div>
 
 <!-- ── Package detail modal ──────────────────────────────────── -->
 @if (detailPackage != null)
 {
-    <div class="modal-overlay" @onmousedown="ClosePackageDetail">
-        <div class="modal-dialog-box" @onmousedown:stopPropagation="true">
+    <div class="modal-overlay" tabindex="-1" @onmousedown="ClosePackageDetail" @onkeydown="OnDetailKey">
+        <div class="modal-dialog-box" role="dialog" aria-modal="true" aria-labelledby="pkg-detail-title"
+             @onmousedown:stopPropagation="true">
             <div class="modal-dialog-header">
-                <span class="modal-dialog-title">Package #@detailPackage.Id</span>
-                <button class="modal-close-btn" @onclick="ClosePackageDetail">×</button>
+                <span class="modal-dialog-title" id="pkg-detail-title">Package #@detailPackage.Id</span>
+                <button class="modal-close-btn" type="button" aria-label="Close dialog" @onclick="ClosePackageDetail">×</button>
             </div>
             <div class="modal-dialog-body">
                 <dl class="pkg-detail-grid">
@@ -73,21 +81,22 @@
 <!-- ── Submit Containers modal ──────────────────────────────── -->
 @if (showSubmitModal)
 {
-    <div class="modal-overlay" @onmousedown="CloseSubmitModal">
-        <div class="modal-dialog-box" style="width:860px; max-width:96vw;" @onmousedown:stopPropagation="true">
+    <div class="modal-overlay" tabindex="-1" @onmousedown="CloseSubmitModal" @onkeydown="OnSubmitKey">
+        <div class="modal-dialog-box" role="dialog" aria-modal="true" aria-labelledby="submit-containers-title"
+             style="width:860px; max-width:96vw;" @onmousedown:stopPropagation="true">
             <div class="modal-dialog-header">
-                <span class="modal-dialog-title">Submit Containers</span>
-                <button class="modal-close-btn" @onclick="CloseSubmitModal">×</button>
+                <span class="modal-dialog-title" id="submit-containers-title">Submit Containers</span>
+                <button class="modal-close-btn" type="button" aria-label="Close dialog" @onclick="CloseSubmitModal">×</button>
             </div>
             <div class="modal-dialog-body" style="max-height:70vh; overflow-y:auto;">
                 <div class="d-flex gap-3">
                     <!-- Left: input area -->
                     <div style="flex:4; min-width:0;">
-                        <label class="form-label-sm">
+                        <label class="form-label-sm" for="container-paste">
                             Paste Code / SSCC pairs (alternating lines)
                         </label>
-                        <textarea class="form-control form-control-sm"
-                                  style="height:280px; font-family:monospace; font-size:11px;"
+                        <textarea id="container-paste" class="form-control form-control-sm"
+                                  style="height:280px; font-family:'IBM Plex Mono', monospace; font-size:11px;"
                                   @onchange="HandleManualInputChange"
                                   placeholder="Code line&#10;SSCC line&#10;Code line&#10;SSCC line…"></textarea>
                         <button class="btn btn-sm btn-outline-secondary mt-2"
@@ -143,8 +152,8 @@
     <div class="page-header">
         <h5 class="mb-0">Submission Requests</h5>
         <div class="d-flex align-items-center gap-2">
-            @if (isRefreshing) { <span class="loading-spinner" title="Refreshing…"></span> }
-            <span class="text-xs text-muted">↻ @refreshInterval s</span>
+            @if (isRefreshing) { <span class="loading-spinner" aria-hidden="true" title="Refreshing…"></span> }
+            <span class="text-xs text-muted" title="Auto-refreshes every @refreshInterval s">↻ @refreshInterval s</span>
             <button class="btn btn-sm btn-primary" @onclick="ShowSubmitModal">+ Submit Containers</button>
         </div>
     </div>
@@ -233,14 +242,14 @@
                         {
                             <button class="btn btn-sm btn-outline-info ms-auto"
                                     @onclick="ReprocessCreated">
-                                ↺ Reprocess Created (@createdCount)
+                                ↻ Reprocess Created (@createdCount)
                             </button>
                         }
                         @if (errorCount > 0)
                         {
                             <button class="btn btn-sm btn-outline-warning @(createdCount > 0 ? "" : "ms-auto")"
                                     @onclick="ReprocessAll">
-                                ↺ Reprocess All Errors (@errorCount)
+                                ↻ Reprocess All Errors (@errorCount)
                             </button>
                         }
                     }
@@ -290,7 +299,9 @@
                                         @if (pkg.Status < 0)
                                         {
                                             <button class="btn-xs btn btn-outline-warning"
-                                                    @onclick="() => ReprocessSingle(pkg)">↺</button>
+                                                    aria-label="Reprocess package @pkg.Id"
+                                                    title="Reprocess"
+                                                    @onclick="() => ReprocessSingle(pkg)">↻</button>
                                         }
                                     </td>
                                 </tr>
@@ -574,6 +585,16 @@
 
     private void CloseSubmitModal() => showSubmitModal = false;
 
+    private void OnSubmitKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") CloseSubmitModal();
+    }
+
+    private void OnDetailKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape") ClosePackageDetail();
+    }
+
     private void HandleManualInputChange(ChangeEventArgs e)
     {
         manualInput = e.Value?.ToString() ?? string.Empty;
@@ -692,8 +713,17 @@
         var e = new ToastEntry(message, cssClass);
         toasts.Add(e);
         await InvokeAsync(StateHasChanged);
-        await Task.Delay(4000);
-        toasts.Remove(e);
-        await InvokeAsync(StateHasChanged);
+        var lifetimeMs = cssClass == "toast-error" ? 8000 : 4000;
+        await Task.Delay(lifetimeMs);
+        if (toasts.Contains(e))
+        {
+            toasts.Remove(e);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void DismissToast(ToastEntry entry)
+    {
+        toasts.Remove(entry);
     }
 }

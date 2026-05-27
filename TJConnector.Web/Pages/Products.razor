@@ -1,17 +1,21 @@
 ﻿@page "/products"
 @inject IProductService ProductService
 
-<h3>Products</h3>
+<PageTitle>Products · Abdulla</PageTitle>
+
+<div class="page-header">
+    <h1 class="mb-0">Products</h1>
+</div>
 
 <div class="container">
     <div class="table-container" style="width: 75%;font-size: 12px;">
+        <CustomTable Items="@(products ?? Enumerable.Empty<Product>())"
+                     Columns="columns"
+                     OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)"
+                     SelectedItem="selectedProduct" />
         @if (products == null)
         {
-            <p>Loading...</p>
-        }
-        else
-        {
-            <CustomTable Items="products" Columns="columns" OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)" SelectedItem="selectedProduct" />
+            <div class="loading-state">Loading products…</div>
         }
     </div>
     <div class="details-container" style="width: 25%;font-size: 12px;">
@@ -42,6 +46,21 @@
     private ProductInfoResponse? selectedProductExternalInfo;
     private Product? selectedProduct;
 
+    protected override void OnInitialized()
+    {
+        // Build columns BEFORE the first render so headers exist even while
+        // products are still loading (so the table is always present).
+        columns = new()
+        {
+            new() { Header = "ID", Value = p => p.Id },
+            new() { Header = "Name", Value = p => p.Name },
+            new() { Header = "GTIN", Value = p => p.Gtin },
+            new() { Header = "Type", Value = p => GetProductTypeString(p.Type) },
+            new() { Header = "External UUID", Value = p => p.ExternalUid },
+            new() { Header = "Record Date", Value = p => LTime(p.RecordDate) }
+        };
+    }
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -55,15 +74,6 @@
         try
         {
             products = await ProductService.GetProductsAsync();
-            columns = new()
-            {
-                new() { Header = "ID", Value = p => p.Id },
-                new() { Header = "Name", Value = p => p.Name },
-                new() { Header = "GTIN", Value = p => p.Gtin },
-                new() { Header = "Type", Value = p => GetProductTypeString(p.Type) },
-                new() { Header = "External UUID", Value = p => p.ExternalUid },
-                new() { Header = "Record Date", Value = p => LTime(p.RecordDate) }
-            };
         }
         catch (Exception ex)
         {

@@ -370,3 +370,10 @@ FodyWeavers.xsd
 /TJConnector.Api/appsettings.json
 /TJConnector.StateSystem/ContainerContentQuery.sql
 /TJConnector.StateSystem/ContainerInfoQuery.sql
+
+# Claude Code + Playwright MCP transient files
+.claude/
+.playwright-mcp/
+
+# Local working-copy code emission dumps
+markingCodeemissioncodes*.txt

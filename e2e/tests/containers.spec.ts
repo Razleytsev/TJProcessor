@@ -15,7 +15,7 @@ test.describe('Submission Requests page', () => {
   test('+ Submit Containers modal opens and closes via X', async ({ page }) => {
     await page.getByRole('button', { name: '+ Submit Containers' }).click();
     await expect(page.getByText('Submit Containers', { exact: true })).toBeVisible();
-    await page.getByRole('button', { name: '×' }).first().click();
+    await page.getByRole('button', { name: /close dialog/i }).first().click();
     await expect(page.getByText('Submit Containers', { exact: true })).toBeHidden();
   });
 

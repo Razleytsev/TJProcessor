@@ -1,6 +1,19 @@
 @typeparam TItem
 
-<input id="filter" @bind="FilterText" @bind:event="oninput" @bind:after="OnFilterChanged" placeholder="Filter" />
+@{
+    var filterId = $"filter-{_instanceId}";
+}
+
+<div class="custom-table-filter">
+    <label for="@filterId" class="visually-hidden">Filter rows</label>
+    <input id="@filterId"
+           type="search"
+           @bind="FilterText"
+           @bind:event="oninput"
+           @bind:after="OnFilterChanged"
+           placeholder="Filter…"
+           aria-label="Filter rows" />
+</div>
 
 <div class="table-wrapper">
     <table class="table table-sm table-xs-font">
@@ -8,27 +21,35 @@
             <tr>
                 @foreach (var column in Columns)
                 {
-                    <th @onclick="() => SortBy(column)" style="cursor:pointer; user-select:none;">
+                    var isSorted = SortColumn == column;
+                    <th @onclick="() => SortBy(column)"
+                        tabindex="0"
+                        aria-sort="@(isSorted ? (SortAscending ? "ascending" : "descending") : "none")"
+                        style="cursor:pointer; user-select:none;"
+                        @onkeydown="@(e => OnHeaderKey(e, column))">
                         @column.Header
-                        @if (SortColumn == column)
+                        @if (isSorted)
                         {
-                            <span>@(SortAscending ? " ▲" : " ▼")</span>
+                            <span aria-hidden="true">@(SortAscending ? " ▲" : " ▼")</span>
                         }
                     </th>
                 }
             </tr>
         </thead>
         <tbody>
-            @foreach (var item in PagedItems)
+            @if (PagedItems.Any())
             {
-                <tr @onclick="() => OnRowClick.InvokeAsync(item)" class="@(GetRowClass(item))">
-                    @foreach (var column in Columns)
-                    {
-                        <td>@column.Value(item)</td>
-                    }
-                </tr>
+                @foreach (var item in PagedItems)
+                {
+                    <tr @onclick="() => OnRowClick.InvokeAsync(item)" class="@(GetRowClass(item))">
+                        @foreach (var column in Columns)
+                        {
+                            <td>@column.Value(item)</td>
+                        }
+                    </tr>
+                }
             }
-            @if (!PagedItems.Any())
+            else
             {
                 <tr>
                     <td colspan="@Columns.Count" class="text-center text-muted py-3">No items found</td>
@@ -63,10 +84,17 @@
     [Parameter]
     public int PageSize { get; set; } = 0;
 
+    private readonly string _instanceId = Guid.NewGuid().ToString("N").Substring(0, 8);
+
     private string FilterText { get; set; } = string.Empty;
     private ColumnDefinition<TItem>? SortColumn { get; set; }
     private bool SortAscending { get; set; } = true;
     private int CurrentPage { get; set; } = 1;
+
+    private void OnHeaderKey(KeyboardEventArgs e, ColumnDefinition<TItem> column)
+    {
+        if (e.Key == "Enter" || e.Key == " ") SortBy(column);
+    }
 
     protected override void OnInitialized()
     {
