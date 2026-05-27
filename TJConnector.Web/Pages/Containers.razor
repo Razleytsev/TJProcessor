@@ -37,22 +37,24 @@
                     <dt>Status</dt>
                     <dd>
                         @{ var (pc, pl) = PkgStatusInfo(detailPackage.Status); }
-                        <span class="badge @pc">@pl</span>
-                        &nbsp;<span class="text-xs text-muted">(@detailPackage.Status)</span>
+                        <span class="badge @pc" title="Internal status code: @detailPackage.Status">@pl</span>
                     </dd>
                     <dt>Content App GUID</dt>  <dd class="cell-guid">@(detailPackage.ContentApplicationGuid?.ToString() ?? "—")</dd>
                     <dt>Aggregation GUID</dt>  <dd class="cell-guid">@(detailPackage.AggregationGuid?.ToString() ?? "—")</dd>
                     <dt>Comment</dt>      <dd>@(detailPackage.Comment ?? "—")</dd>
-                    <dt>Record Date</dt>  <dd>@detailPackage.RecordDate.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss")</dd>
+                    <dt>Created at</dt>   <dd>@detailPackage.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm:ss")</dd>
                 </dl>
                 @if (detailPackage.StatusHistory?.Length > 0)
                 {
+                    @* B9: list status history oldest-first so the row order
+                       matches the chronology readers expect from "Created at"
+                       above. *@
                     <div class="mt-2">
                         <small class="text-muted fw-semibold">Status History</small>
                         <table class="table table-sm table-xs-font mt-1">
                             <thead><tr><th>Status</th><th>Date</th></tr></thead>
                             <tbody>
-                                @foreach (var h in detailPackage.StatusHistory.OrderByDescending(x => x.StatusDate))
+                                @foreach (var h in detailPackage.StatusHistory.OrderBy(x => x.StatusDate))
                                 {
                                     <tr>
                                         <td>@GetStatusLabel(h.Status)</td>
@@ -158,7 +160,7 @@
 
     <!-- Header -->
     <div class="page-header">
-        <h5 class="mb-0">Submission Requests</h5>
+        <h1 class="page-title mb-0">Submission Requests</h1>
         <div class="d-flex align-items-center gap-2 ms-auto">
             <span class="refresh-pill @(isRefreshing ? "is-refreshing" : "")"
                   title="Auto-refreshes every @refreshInterval s">
@@ -319,8 +321,8 @@
                                         {
                                             <button class="btn-xs btn btn-outline-warning"
                                                     aria-label="Reprocess package @pkg.Id"
-                                                    title="Reprocess"
-                                                    @onclick="() => ReprocessSingle(pkg)">↻</button>
+                                                    title="Reprocess this package"
+                                                    @onclick="() => ReprocessSingle(pkg)">↻ Retry</button>
                                         }
                                     </td>
                                 </tr>
@@ -681,10 +683,20 @@
     }
 
     // ── Status helpers ────────────────────────────────────────────────────
-    private static string ReqStatusBadge(int status)
+    // B4: render request status as a proper badge so the Requests table is
+    // visually consistent with the Packages sub-table, /batches and the
+    // package-detail modal (all of which use the badge+dot pattern).
+    private static (string css, string label) ReqStatusInfo(int status) => status switch
     {
-        // PackageRequest status is opaque in current system — show raw value
-        return status == 0 ? "Created" : $"Status {status}";
+        0 => ("badge-created", "Created"),
+        _ => ("badge-unknown", $"Status {status}")
+    };
+
+    private static Microsoft.AspNetCore.Components.MarkupString ReqStatusBadge(int status)
+    {
+        var (css, label) = ReqStatusInfo(status);
+        return new Microsoft.AspNetCore.Components.MarkupString(
+            $"<span class=\"badge {css}\">{System.Net.WebUtility.HtmlEncode(label)}</span>");
     }
 
     // Note: written as if/else (not a switch with relational patterns) because
