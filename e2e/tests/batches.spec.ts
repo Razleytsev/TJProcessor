@@ -33,7 +33,9 @@ test.describe('Order Batches page', () => {
 
   test('Cancel button closes the modal', async ({ page }) => {
     await page.getByRole('button', { name: '+ Order Codes' }).click();
-    await page.getByRole('button', { name: 'Cancel' }).click();
+    // Scope to the modal — seeded batches have row-level "Cancel" buttons that
+    // would otherwise collide with the modal's Cancel.
+    await page.locator('.modal-dialog-box').getByRole('button', { name: 'Cancel' }).click();
     await expect(page.getByText('Order Codes', { exact: true })).toBeHidden();
   });
 

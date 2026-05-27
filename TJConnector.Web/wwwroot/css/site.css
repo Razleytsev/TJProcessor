@@ -1282,9 +1282,11 @@ textarea:focus-visible,
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.45);
-    backdrop-filter: blur(2px);
-    -webkit-backdrop-filter: blur(2px);
+    /* Heavier dim than the Changer default — TJ's pages have a lot of
+       white cards behind, so a low-opacity overlay reads as see-through. */
+    background: rgba(15, 23, 42, 0.62);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
     z-index: 1000;
     display: flex;
     align-items: center;
@@ -1302,12 +1304,14 @@ textarea:focus-visible,
     background: var(--bg-surface);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    width: 460px;
-    max-width: min(90vw, 720px);
+    width: 480px;
+    max-width: min(92vw, 560px);
     max-height: 90vh;
     display: flex;
     flex-direction: column;
-    box-shadow: var(--shadow-3);
+    box-shadow:
+        0 24px 60px rgba(15, 23, 42, 0.32),
+        0 8px 18px rgba(15, 23, 42, 0.18);
     overflow: hidden;
     animation: dialog-in 0.18s ease-out;
 }
