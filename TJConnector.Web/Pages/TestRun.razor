@@ -24,7 +24,20 @@
     }
     else
     {
-        <h5 style="margin:0 0 0.4rem;font-size:1.35rem;font-weight:600;letter-spacing:-0.015em;color:var(--text-strong);">Production Contour Test Run</h5>
+        @* B7: align with /batches & /containers — use the shared page-header
+           pattern so the title strip + auto-refresh pill follow one rule.
+           B13: move the auto-refresh hint out of the Recent-runs card title
+           and into the page-header pill, matching the other pages. *@
+        <div class="page-header" style="padding-left:0;padding-right:0;">
+            <h1 class="page-title mb-0">Production Contour Test Run</h1>
+            <div class="d-flex align-items-center gap-2 ms-auto">
+                <span class="refresh-pill @(runs != null && runs.Any(r => r.Stage >= 0 && r.Stage < 100) ? "is-refreshing" : "")"
+                      title="Recent-runs auto-refresh every 2 s">
+                    <span class="refresh-dot" aria-hidden="true"></span>
+                    2 s
+                </span>
+            </div>
+        </div>
         <p class="text-muted" style="margin:0 0 1rem;font-size:0.85rem;">
             Drives the full marking-authority chain (pack → bundle → mastercase → application → aggregation) against the
             real external system. Real codes are minted and cannot be reverted.
@@ -113,7 +126,7 @@
         </div>
 
         <div class="info-card" style="margin-top:16px;">
-            <h6 style="margin:0 0 0.85rem;font-size:0.85rem;font-weight:600;">Recent runs <span class="text-xs text-muted" style="font-weight:400;">(auto-refresh 2 s)</span></h6>
+            <h6 style="margin:0 0 0.85rem;font-size:0.85rem;font-weight:600;">Recent runs</h6>
             @if (runs == null)
             {
                 <div class="loading-state">Loading…</div>
@@ -148,7 +161,7 @@
                                 <td>@r.PacksPerBundle × @r.BundlesPerContainer</td>
                                 <td>@r.User</td>
                                 <td><span class="badge @StageBadgeClass(r.Stage)">@r.StageLabel</span></td>
-                                <td>@r.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm:ss")</td>
+                                <td>@r.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
                                 <td>
                                     @if (r.Stage < 0 && r.Stage != -99)
                                     {
