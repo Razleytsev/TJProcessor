@@ -127,16 +127,17 @@ test.describe('Modals', () => {
   });
 
   test.describe('Confirm-Cancel batch dialog', () => {
-    test('opens, has Yes/No, closes on Esc', async ({ page }) => {
+    test('opens, has Yes,Cancel + Cancel, closes on Esc', async ({ page }) => {
       await page.goto('/batches');
       await waitForBlazor(page);
-      const cancelBtn = page.locator('tbody').getByRole('button', { name: 'Cancel' }).first();
+      const cancelBtn = page.locator('tbody').getByRole('button', { name: 'Cancel', exact: true }).first();
       if (await cancelBtn.count() === 0) test.skip(true, 'no batches in cancellable state');
       await cancelBtn.click();
       const confirm = page.locator('.confirm-box');
       await expect(confirm).toBeVisible();
-      await expect(confirm.getByRole('button', { name: /Yes, Cancel/ })).toBeVisible();
-      await expect(confirm.getByRole('button', { name: 'No' })).toBeVisible();
+      // B14: standardised destructive-confirmation pattern.
+      await expect(confirm.getByRole('button', { name: /Yes, Cancel Batch/ })).toBeVisible();
+      await expect(confirm.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(confirm).toBeHidden();
     });

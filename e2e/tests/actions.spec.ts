@@ -56,15 +56,17 @@ test.describe('Action buttons render correctly', () => {
     expect(text).not.toContain('↺');
   });
 
-  test('Cancel-batch confirm dialog cancels via No', async ({ page }) => {
+  test('Cancel-batch confirm dialog cancels via Cancel', async ({ page }) => {
     await page.goto('/batches');
     await waitForBlazor(page);
-    const cancelBtn = page.locator('.split-pane-top tbody').getByRole('button', { name: 'Cancel' }).first();
+    const cancelBtn = page.locator('.split-pane-top tbody').getByRole('button', { name: 'Cancel', exact: true }).first();
     if (await cancelBtn.count() === 0) test.skip(true, 'no cancellable batches');
     await cancelBtn.click();
     const confirmBox = page.locator('.confirm-box');
     await expect(confirmBox).toBeVisible();
-    await confirmBox.getByRole('button', { name: 'No' }).click();
+    // B14: standardised destructive-confirmation pattern — "Cancel" escape
+    // hatch + "Yes, Cancel Batch" primary destructive.
+    await confirmBox.getByRole('button', { name: 'Cancel', exact: true }).click();
     await expect(confirmBox).toBeHidden();
   });
 });
