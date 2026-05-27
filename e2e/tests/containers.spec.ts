@@ -4,6 +4,8 @@ test.describe('Submission Requests page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/containers');
     await expect(page.getByRole('heading', { name: 'Submission Requests' })).toBeVisible();
+    await page.waitForFunction(() => !!(window as any).Blazor);
+    await page.waitForLoadState('networkidle');
   });
 
   test('shows requests list or empty state', async ({ page }) => {

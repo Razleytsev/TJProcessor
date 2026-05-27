@@ -1,4 +1,4 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 
 <HeadContent>
     <meta name="application-name" content="Abdulla" />
@@ -6,13 +6,13 @@
 <PageTitle>Abdulla</PageTitle>
 
 <div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <article class="content px-4">
+    <NavMenu />
+    <main class="main-content">
+        <div class="top-bar">
+            <span class="env-tag">Production-Test Contour</span>
+        </div>
+        <div class="content-area">
             @Body
-        </article>
+        </div>
     </main>
 </div>

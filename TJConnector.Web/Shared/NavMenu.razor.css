@@ -1,100 +1,105 @@
+/* Sidebar — adopted from Changer reference.
+   Single deep-slate background, rounded nav items, accent left-bar
+   on the active route, version tag at the foot. */
+
+.sidebar {
+    width: 232px;
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    border-right: 1px solid var(--sidebar-border);
+    height: 100vh;
+    position: sticky;
+    top: 0;
+}
+
+.sidebar .brand,
+.sidebar .navbar-brand {
+    display: block;
+    padding: 1.15rem 1.25rem;
+    font-size: 1.05rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--sidebar-border);
+    color: var(--sidebar-text-strong);
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    transition: background 0.12s ease;
+}
+
+.sidebar a.brand:hover,
+.sidebar a.navbar-brand:hover {
+    background-color: rgba(148, 163, 184, 0.06);
+    color: var(--sidebar-text-strong);
+}
+
+.sidebar nav {
+    padding: 0.6rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.sidebar .nav-link,
+.sidebar ::deep .nav-link {
+    display: block;
+    padding: 0.55rem 0.85rem;
+    color: var(--sidebar-text);
+    text-decoration: none;
+    font-size: 0.875rem;
+    border-radius: 6px;
+    transition: background 0.12s ease, color 0.12s ease;
+}
+
+.sidebar .nav-link:hover,
+.sidebar ::deep .nav-link:hover {
+    background-color: rgba(148, 163, 184, 0.08);
+    color: var(--sidebar-text-strong);
+}
+
+.sidebar .nav-link.active,
+.sidebar ::deep .nav-link.active {
+    background-color: rgba(59, 130, 246, 0.14);
+    color: var(--sidebar-text-strong);
+    font-weight: 500;
+    box-shadow: inset 3px 0 0 #3b82f6;
+}
+
+/* Footer with version tag */
+.nav-footer {
+    margin-top: auto;
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid var(--sidebar-border);
+    font-size: 0.78rem;
+    color: var(--sidebar-text-faint);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.version-tag {
+    color: var(--sidebar-text-faint);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+}
+
+/* Mobile collapse toggle (preserved for narrow screens) */
 .navbar-toggler {
     background-color: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.16);
 }
-
 .top-row {
     height: 3.5rem;
     background-color: rgba(0, 0, 0, 0.25);
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.navbar-brand {
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-    color: #f1f5f9;
-    text-decoration: none;
-    transition: color 0.12s ease-out;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.navbar-brand:hover { color: #ffffff; text-decoration: none; }
-
-/* Decorative mark — square with accent corner */
-.navbar-brand::before {
-    content: "";
-    width: 18px;
-    height: 18px;
-    background:
-        linear-gradient(135deg, transparent 50%, #3b56e8 50%),
-        #f1f5f9;
-    border-radius: 4px;
-    flex: 0 0 18px;
-}
-
-.oi {
-    width: 2rem;
-    font-size: 1.1rem;
-    vertical-align: text-top;
-    top: -2px;
-}
-
-.nav-item {
-    font-size: 0.875rem;
-    padding-bottom: 0.25rem;
-    padding-left: 0;
-    padding-right: 0;
-}
-
-    .nav-item:first-of-type { padding-top: 0.75rem; }
-    .nav-item:last-of-type  { padding-bottom: 0.75rem; }
-
-    .nav-item ::deep a {
-        color: #94a3b8;
-        border-radius: 0;
-        height: 2.4rem;
-        display: flex;
-        align-items: center;
-        line-height: 2.4rem;
-        padding-left: 1.5rem;
-        padding-right: 1rem;
-        text-decoration: none;
-        position: relative;
-        font-weight: 500;
-        letter-spacing: 0.005em;
-        transition: color 0.12s ease-out, background 0.12s ease-out;
-        border-left: 2px solid transparent;
-    }
-
-    .nav-item ::deep a:hover {
-        background-color: rgba(255, 255, 255, 0.04);
-        color: #f1f5f9;
-        text-decoration: none;
-    }
-
-    .nav-item ::deep a.active {
-        background-color: rgba(59, 86, 232, 0.14);
-        color: #ffffff;
-        border-left-color: #3b56e8;
-    }
-
-    .nav-item ::deep a.active::before {
-        content: "";
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 2px;
-        background: #3b56e8;
-    }
-
 @media (min-width: 641px) {
     .navbar-toggler { display: none; }
     .collapse { display: block; }
     .nav-scrollable {
-        height: calc(100vh - 3.5rem);
+        flex: 1;
         overflow-y: auto;
     }
 }

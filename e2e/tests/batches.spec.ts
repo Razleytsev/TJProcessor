@@ -4,6 +4,9 @@ test.describe('Order Batches page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/batches');
     await expect(page.getByRole('heading', { name: 'Order Batches' })).toBeVisible();
+    // Wait until Blazor Server's SignalR has attached so clicks are interactive.
+    await page.waitForFunction(() => !!(window as any).Blazor);
+    await page.waitForLoadState('networkidle');
   });
 
   test('shows batch table with at least one row or an empty state', async ({ page }) => {

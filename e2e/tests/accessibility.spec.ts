@@ -34,6 +34,8 @@ test.describe('Accessibility & UX conventions', () => {
 
   test('Order Codes modal traps Escape and dismisses cleanly', async ({ page }) => {
     await page.goto('/batches');
+    await page.waitForFunction(() => !!(window as any).Blazor);
+    await page.waitForLoadState('networkidle');
     await page.getByRole('button', { name: '+ Order Codes' }).click();
     await expect(page.getByText('Order Codes', { exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
