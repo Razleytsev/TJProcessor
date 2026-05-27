@@ -196,6 +196,34 @@ textarea:focus-visible,
 .btn-outline-info:hover:not(:disabled)    { background: #eff4ff; color: #03497a; border-color: #87b9e0; }
 .btn-outline-primary { color: var(--accent); border-color: var(--accent); background: transparent; }
 .btn-outline-primary:hover:not(:disabled) { background: var(--accent-soft); color: var(--accent-hover); border-color: var(--accent-hover); }
+
+/* B8: disabled buttons should LOOK disabled — cursor flips to not-allowed
+   and outline-variant colour drains to muted slate so the user is not
+   teased by an enabled-looking blue button that doesn't respond. */
+.btn:disabled,
+.btn[disabled] {
+    cursor: not-allowed;
+    pointer-events: auto;
+}
+.btn-outline-primary:disabled,
+.btn-outline-primary[disabled],
+.btn-outline-secondary:disabled,
+.btn-outline-secondary[disabled],
+.btn-outline-info:disabled,
+.btn-outline-info[disabled],
+.btn-outline-success:disabled,
+.btn-outline-success[disabled],
+.btn-outline-warning:disabled,
+.btn-outline-warning[disabled],
+.btn-outline-danger:disabled,
+.btn-outline-danger[disabled],
+.btn-outline:disabled,
+.btn-outline[disabled] {
+    color: var(--text-faint);
+    border-color: var(--border-soft);
+    background: transparent;
+    opacity: 0.7;
+}
 .btn-danger { background: #b42318; color: #fff; border-color: #b42318; }
 .btn-danger:hover:not(:disabled) { background: #8a1a12; border-color: #8a1a12; color: #fff; }
 .btn-warning { background: #f59e0b; color: #fff; border-color: #f59e0b; }
@@ -266,7 +294,13 @@ textarea:focus-visible,
     cursor: not-allowed;
     border-color: var(--border-subtle);
 }
-.form-select:disabled { background-image: none; }
+/* B3: keep the caret on disabled selects (40% opacity) so the dropdown
+   affordance is preserved — without it a disabled <select> reads as a
+   read-only text input. */
+.form-select:disabled {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='4,6 8,10 12,6' /%3E%3C/svg%3E");
+    opacity: 0.75;
+}
 
 .form-control.is-invalid {
     border-color: #b42318;
@@ -401,7 +435,8 @@ textarea:focus-visible,
 .page-header h3,
 .page-header h4,
 .page-header h5,
-.page-header h6 {
+.page-header h6,
+.page-title {
     margin: 0;
     font-size: var(--fs-h1);
     font-weight: 600;
@@ -650,7 +685,12 @@ textarea:focus-visible,
     font-size: 0.72rem;
 }
 
-/* Sticky thead inside pane-scroll */
+/* Sticky thead inside pane-scroll.
+   B1: Bootstrap's `.sticky-top` utility class hoists the <thead> itself to
+   z-index 1020, which sits ABOVE our modal-overlay (1000). Both the <thead>
+   and the <th> need to be clamped to a low z-index so the modal overlay
+   reliably covers them. The modal-overlay is independently raised to 1100. */
+.pane-scroll thead.sticky-top,
 .pane-scroll thead.sticky-top th {
     position: sticky;
     top: 0;
@@ -1287,7 +1327,9 @@ textarea:focus-visible,
     background: rgba(15, 23, 42, 0.62);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
-    z-index: 1000;
+    /* B1: must sit above Bootstrap's .sticky-top utility (1020) so that
+       page-table headers don't bleed through modals. */
+    z-index: 1100;
     display: flex;
     align-items: center;
     justify-content: center;
