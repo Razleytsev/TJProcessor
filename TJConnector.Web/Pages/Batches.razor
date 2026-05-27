@@ -26,12 +26,14 @@
 <!-- ── Confirm dialog ────────────────────────────────────────── -->
 @if (showConfirm)
 {
+    @* B14: standardise cancel-confirm dialog — destructive primary verb on
+       one side, neutral "Cancel" (the escape hatch) on the other. *@
     <div class="modal-overlay" tabindex="-1" @onkeydown="OnConfirmKey">
         <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
             <p id="confirm-title" class="mb-3">@confirmMessage</p>
             <div class="d-flex gap-2 justify-content-end">
-                <button class="btn btn-sm btn-danger" @onclick="ConfirmYes">Yes, Cancel</button>
-                <button class="btn btn-sm btn-outline" @onclick="() => showConfirm = false" autofocus>No</button>
+                <button class="btn btn-sm btn-outline" @onclick="() => showConfirm = false" autofocus>Cancel</button>
+                <button class="btn btn-sm btn-danger" @onclick="ConfirmYes">Yes, Cancel Batch</button>
             </div>
         </div>
     </div>
@@ -42,7 +44,7 @@
 
     <!-- Header -->
     <div class="page-header">
-        <h5 class="mb-0">Order Batches</h5>
+        <h1 class="page-title mb-0">Order Batches</h1>
         <div class="d-flex align-items-center gap-2 ms-auto">
             <span class="refresh-pill @(isRefreshing ? "is-refreshing" : "")"
                   title="Auto-refreshes every @refreshInterval s">
