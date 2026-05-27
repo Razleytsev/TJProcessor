@@ -90,14 +90,9 @@
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            var updateExternal = await ProductService.GetExternalProductsAsync();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error fetching external products: {ex.Message}");
-        }
+        // Render local data first — the external mark.tj sync below can take
+        // up to ~45 s (3 Polly retries × 15 s timeouts) and used to leave the
+        // page stuck on "Loading products…" the whole time.
         try
         {
             products = await ProductService.GetProductsAsync();
@@ -106,6 +101,26 @@
         {
             Console.WriteLine($"Error fetching products: {ex.Message}");
         }
+
+        // Fire-and-forget the external sync. When it completes (or fails),
+        // refresh the local list so any newly-imported products show up.
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ProductService.GetExternalProductsAsync();
+                var fresh = await ProductService.GetProductsAsync();
+                await InvokeAsync(() =>
+                {
+                    products = fresh;
+                    StateHasChanged();
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Background external-products sync failed: {ex.Message}");
+            }
+        });
     }
 
     private void ClearSelection()
