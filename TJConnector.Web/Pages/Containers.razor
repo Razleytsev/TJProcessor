@@ -174,8 +174,10 @@
     <!-- Split pane -->
     <div class="split-pane-wrapper" id="req-split-wrapper">
 
+        @* When no request is selected, size the top pane to its content so a
+           short table doesn't render as a giant empty card. *@
         <!-- ── TOP: requests list ─────────────────────────────── -->
-        <div class="split-pane-top" style="flex: 0 0 @(topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
+        <div class="split-pane-top" style="flex: @(selectedRequest == null ? "0 1 auto" : $"0 0 {topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%"); max-height: 100%;">
             @{
                 var requestCount = requests?.Count() ?? 0;
             }
@@ -237,55 +239,51 @@
             </div>
         </div>
 
+        @* Hide divider + packages pane (display:none) when no request is
+           selected so the top pane fills available height. JS drag handler
+           stays attached because the DOM elements remain. *@
         <!-- ── Drag divider ──────────────────────────────────── -->
-        <div class="split-pane-divider" id="req-divider">
+        <div class="split-pane-divider" id="req-divider" style="@(selectedRequest == null ? "display:none;" : "")">
             <div class="divider-grip"></div>
         </div>
 
         <!-- ── BOTTOM: packages ───────────────────────────────── -->
-        <div class="split-pane-bottom">
+        <div class="split-pane-bottom" style="@(selectedRequest == null ? "display:none;" : "")">
+            @if (selectedRequest != null)
+            {
             <div class="pane-toolbar">
-                @if (selectedRequest != null)
+                <span class="pane-title">Packages — Request #@selectedRequest.Id</span>
+                @if (isReprocessingAll)
                 {
-                    <span class="pane-title">Packages — Request #@selectedRequest.Id</span>
-                    @if (isReprocessingAll)
-                    {
-                        <div class="reprocess-bar ms-2">
-                            <span class="loading-spinner"></span>
-                            Reprocessing… @reprocessDone / @reprocessTotal
-                        </div>
-                    }
-                    else
-                    {
-                        var errorCount = selectedDetail?.Packages?.Count(p => p.Status < 0) ?? 0;
-                        var createdCount = selectedDetail?.Packages?.Count(p => p.Status == 0) ?? 0;
-                        @if (createdCount > 0)
-                        {
-                            <button class="btn btn-sm btn-outline-info ms-auto"
-                                    @onclick="ReprocessCreated">
-                                ↻ Reprocess Created (@createdCount)
-                            </button>
-                        }
-                        @if (errorCount > 0)
-                        {
-                            <button class="btn btn-sm btn-outline-warning @(createdCount > 0 ? "" : "ms-auto")"
-                                    @onclick="ReprocessAll">
-                                ↻ Reprocess All Errors (@errorCount)
-                            </button>
-                        }
-                    }
+                    <div class="reprocess-bar ms-2">
+                        <span class="loading-spinner"></span>
+                        Reprocessing… @reprocessDone / @reprocessTotal
+                    </div>
                 }
                 else
                 {
-                    <span class="pane-title text-muted">Select a request above</span>
+                    var errorCount = selectedDetail?.Packages?.Count(p => p.Status < 0) ?? 0;
+                    var createdCount = selectedDetail?.Packages?.Count(p => p.Status == 0) ?? 0;
+                    @if (createdCount > 0)
+                    {
+                        <button class="btn btn-sm btn-outline-info ms-auto"
+                                @onclick="ReprocessCreated">
+                            ↻ Reprocess Created (@createdCount)
+                        </button>
+                    }
+                    @if (errorCount > 0)
+                    {
+                        <button class="btn btn-sm btn-outline-warning @(createdCount > 0 ? "" : "ms-auto")"
+                                @onclick="ReprocessAll">
+                            ↻ Reprocess All Errors (@errorCount)
+                        </button>
+                    }
                 }
+                <button class="btn-icon ms-2" aria-label="Close packages pane" title="Close"
+                        @onclick="() => { selectedRequest = null; selectedDetail = null; }">×</button>
             </div>
             <div class="pane-scroll">
-                @if (selectedRequest == null)
-                {
-                    <div class="empty-state">Click a request row above to view its packages.</div>
-                }
-                else if (selectedDetail == null)
+                @if (selectedDetail == null)
                 {
                     <div class="loading-state">Loading packages…</div>
                 }
@@ -339,6 +337,7 @@
                     }
                 }
             </div>
+            }
         </div>
     </div>
 </div>

@@ -58,8 +58,11 @@
     <!-- Split pane -->
     <div class="split-pane-wrapper" id="batch-split-wrapper">
 
+        @* When no batch is selected, size the top pane to its content (still
+           bounded by max-height via overflow:auto on .pane-scroll) so a short
+           table doesn't render as a giant empty card. *@
         <!-- ── TOP: batch list ───────────────────────────────── -->
-        <div class="split-pane-top" style="flex: 0 0 @(topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%;">
+        <div class="split-pane-top" style="flex: @(selectedBatch == null ? "0 1 auto" : $"0 0 {topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%"); max-height: 100%;">
             @{
                 var batchCount = batches?.Count() ?? 0;
             }
@@ -145,48 +148,45 @@
             </div>
         </div>
 
+        @* Hide divider + orders pane (display:none) when no batch is selected
+           so the top pane fills the available height. The DOM stays intact so
+           the JS split-pane drag handler attached on first render is reused
+           when a batch is selected and the bottom pane reappears. *@
         <!-- ── Drag divider ──────────────────────────────────── -->
-        <div class="split-pane-divider" id="batch-divider">
+        <div class="split-pane-divider" id="batch-divider" style="@(selectedBatch == null ? "display:none;" : "")">
             <div class="divider-grip"></div>
         </div>
 
         <!-- ── BOTTOM: orders for selected batch ─────────────── -->
-        <div class="split-pane-bottom">
+        <div class="split-pane-bottom" style="@(selectedBatch == null ? "display:none;" : "")">
+            @if (selectedBatch != null)
+            {
+                var (sc, sl) = BatchStatusInfo(selectedBatch.Status);
             <div class="pane-toolbar">
-                @if (selectedBatch != null)
+                <span class="pane-title">
+                    Orders — Batch #@selectedBatch.Id &nbsp;
+                    <span class="badge @sc" style="font-size:10px;">@sl</span>
+                </span>
+                @if (selectedBatch.Status == 2 && selectedBatchDto != null)
                 {
-                    var (sc, sl) = BatchStatusInfo(selectedBatch.Status);
-                    <span class="pane-title">
-                        Orders — Batch #@selectedBatch.Id &nbsp;
-                        <span class="badge @sc" style="font-size:10px;">@sl</span>
-                    </span>
-                    @if (selectedBatch.Status == 2 && selectedBatchDto != null)
-                    {
-                        <button class="btn btn-sm btn-outline-success ms-auto"
-                                @onclick="() => DownloadBatch(selectedBatch)">↓ Download</button>
-                    }
-                    else if (selectedBatch.Status == 0 || selectedBatch.Status == 1)
-                    {
-                        <button class="btn btn-sm btn-outline-danger ms-auto"
-                                @onclick="() => PromptCancelBatch(selectedBatch)">Cancel Batch</button>
-                    }
-                    else if (selectedBatch.Status == -1)
-                    {
-                        <button class="btn btn-sm btn-outline-warning ms-auto"
-                                @onclick="() => ContinueBatch(selectedBatch)">Continue Batch</button>
-                    }
+                    <button class="btn btn-sm btn-outline-success ms-auto"
+                            @onclick="() => DownloadBatch(selectedBatch)">↓ Download</button>
                 }
-                else
+                else if (selectedBatch.Status == 0 || selectedBatch.Status == 1)
                 {
-                    <span class="pane-title text-muted">Select a batch above to view its orders</span>
+                    <button class="btn btn-sm btn-outline-danger ms-auto"
+                            @onclick="() => PromptCancelBatch(selectedBatch)">Cancel Batch</button>
                 }
+                else if (selectedBatch.Status == -1)
+                {
+                    <button class="btn btn-sm btn-outline-warning ms-auto"
+                            @onclick="() => ContinueBatch(selectedBatch)">Continue Batch</button>
+                }
+                <button class="btn-icon ms-2" aria-label="Close orders pane" title="Close"
+                        @onclick="() => { selectedBatch = null; selectedBatchDto = null; }">×</button>
             </div>
             <div class="pane-scroll">
-                @if (selectedBatch == null)
-                {
-                    <div class="empty-state">Click a row in the top pane.</div>
-                }
-                else if (selectedBatchDto == null)
+                @if (selectedBatchDto == null)
                 {
                     <div class="loading-state">Loading orders…</div>
                 }
@@ -238,6 +238,7 @@
                     }
                 }
             </div>
+            }
         </div>
     </div>
 </div>
