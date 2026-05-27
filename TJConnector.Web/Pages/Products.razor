@@ -4,7 +4,7 @@
 <PageTitle>Products · Abdulla</PageTitle>
 
 <div class="page-header">
-    <h1 class="mb-0">Products</h1>
+    <h1 class="page-title mb-0">Products</h1>
 </div>
 
 <div class="container">
@@ -21,21 +21,46 @@
                          SelectedItem="selectedProduct" />
         }
     </div>
-    @if (selectedProductExternalInfo != null)
+    @* B2: always render the details panel once a row is selected — gate
+       only the body content on the external-API result. Otherwise a failed
+       external call silently does nothing, which is indistinguishable from
+       a frozen UI. *@
+    @if (selectedProduct != null)
     {
         <div class="details-container" style="flex:0 0 380px;font-size: 12px;">
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <h4 style="margin:0;font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);">External Product Information</h4>
                 <button class="btn-icon" aria-label="Close details" title="Close" @onclick="ClearSelection">×</button>
             </div>
-            <p><strong>Name:</strong> @selectedProductExternalInfo.name</p>
-            <p><strong>GTIN:</strong> @selectedProductExternalInfo.gtin</p>
-            <p><strong>Manufacturer:</strong> @selectedProductExternalInfo.manufacturerName</p>
-            <p><strong>Weight (Gross):</strong> @selectedProductExternalInfo.weightGross</p>
-            <p><strong>Dimensions:</strong> @selectedProductExternalInfo.length x @selectedProductExternalInfo.width x @selectedProductExternalInfo.height</p>
-            <p><strong>Storage Conditions:</strong> @selectedProductExternalInfo.storageConditions</p>
-            <p><strong>Composition:</strong> @selectedProductExternalInfo.composition</p>
-            <p><strong>Country of Origin:</strong> @selectedProductExternalInfo.productCountryOfOrigin</p>
+            @if (isLoadingExternal)
+            {
+                <div class="loading-state" style="justify-content:flex-start;padding:0.5rem 0;">Loading external info…</div>
+            }
+            else if (selectedProductExternalInfo != null)
+            {
+                <p><strong>Name:</strong> @selectedProductExternalInfo.name</p>
+                <p><strong>GTIN:</strong> @selectedProductExternalInfo.gtin</p>
+                <p><strong>Manufacturer:</strong> @selectedProductExternalInfo.manufacturerName</p>
+                <p><strong>Weight (Gross):</strong> @selectedProductExternalInfo.weightGross</p>
+                <p><strong>Dimensions:</strong> @selectedProductExternalInfo.length x @selectedProductExternalInfo.width x @selectedProductExternalInfo.height</p>
+                <p><strong>Storage Conditions:</strong> @selectedProductExternalInfo.storageConditions</p>
+                <p><strong>Composition:</strong> @selectedProductExternalInfo.composition</p>
+                <p><strong>Country of Origin:</strong> @selectedProductExternalInfo.productCountryOfOrigin</p>
+            }
+            else
+            {
+                <div class="alert alert-warning" role="alert" style="margin:0;">
+                    <strong>External info unavailable.</strong>
+                    @if (!string.IsNullOrEmpty(externalError))
+                    {
+                        <div class="text-xs" style="margin-top:0.35rem;">@externalError</div>
+                    }
+                    else
+                    {
+                        <div class="text-xs" style="margin-top:0.35rem;">The marking-authority API didn't return data for this product.</div>
+                    }
+                </div>
+            }
         </div>
     }
 </div>
@@ -45,6 +70,8 @@
     private List<CustomTable<Product>.ColumnDefinition<Product>> columns = new();
     private ProductInfoResponse? selectedProductExternalInfo;
     private Product? selectedProduct;
+    private bool isLoadingExternal;
+    private string? externalError;
 
     protected override void OnInitialized()
     {
@@ -85,11 +112,17 @@
     {
         selectedProduct = null;
         selectedProductExternalInfo = null;
+        externalError = null;
+        isLoadingExternal = false;
     }
 
     private async Task OnProductClick(Product product)
     {
         selectedProduct = product;
+        selectedProductExternalInfo = null;
+        externalError = null;
+        isLoadingExternal = true;
+        StateHasChanged();
         try
         {
             var result = await ProductService.GetExternalProductByIdAsync(product.ExternalUid.ToString());
@@ -99,20 +132,27 @@
             }
             else
             {
+                externalError = string.IsNullOrEmpty(result.Message)
+                    ? "External API returned no data."
+                    : result.Message;
                 Console.WriteLine("Failed to fetch external product info: " + result.Message);
-                selectedProductExternalInfo = null;
             }
         }
         catch (Exception ex)
         {
+            externalError = ex.Message;
             Console.WriteLine($"Error fetching external product info: {ex.Message}");
-            selectedProductExternalInfo = null;
+        }
+        finally
+        {
+            isLoadingExternal = false;
         }
     }
 
     public string LTime(DateTimeOffset time)
     {
-        return time.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss");
+        // B5: tables use the same compact format everywhere — dd.MM.yy HH:mm.
+        return time.ToLocalTime().ToString("dd.MM.yy HH:mm");
     }
     private string GetProductTypeString(int type)
     {
