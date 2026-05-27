@@ -1,0 +1,14 @@
+@inject NavigationManager Navigation
+
+@code {
+    protected override void OnInitialized()
+    {
+        // Use forceLoad so the browser actually hits /login with a fresh
+        // request — cookie auth needs the HTTP response cycle, not a
+        // Blazor virtual navigation. Carry the original URL so the user
+        // lands where they were after they sign in.
+        var current = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var path = string.IsNullOrEmpty(current) ? "/" : "/" + current;
+        Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString(path)}", forceLoad: true);
+    }
+}

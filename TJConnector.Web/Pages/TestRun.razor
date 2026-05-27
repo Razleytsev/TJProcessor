@@ -1,4 +1,5 @@
 @page "/test-run"
+@attribute [Authorize(Roles = "Admin")]
 @using Microsoft.Extensions.Configuration
 @using TJConnector.Postgres.Entities
 @using TJConnector.SharedLibrary.DTOs.Forms

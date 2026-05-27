@@ -10,6 +10,14 @@
     <main class="main-content">
         <div class="top-bar">
             <span class="env-tag">Production-Test Contour</span>
+            <AuthorizeView>
+                <Authorized>
+                    <span class="user-name ms-3">@context.User.Identity?.Name</span>
+                    @* Lightweight confirm before signing out — same pattern as the Changer reference. *@
+                    <a href="/logout" class="btn btn-sm btn-outline ms-2"
+                       onclick="return confirm('Sign out?');">Logout</a>
+                </Authorized>
+            </AuthorizeView>
         </div>
         <div class="content-area">
             @Body

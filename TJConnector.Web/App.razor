@@ -1,20 +1,41 @@
-﻿<Router AppAssembly="@typeof(App).Assembly">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-    <NotFound>
-        <PageTitle>Page not found · Abdulla</PageTitle>
-        <LayoutView Layout="@typeof(MainLayout)">
-            <div class="not-found-page" role="alert">
-                <div class="not-found-code">404</div>
-                <h1 class="not-found-title">Page not found</h1>
-                <p class="not-found-body">
-                    The page you’re looking for doesn’t exist or was moved.
-                    Use the navigation on the left, or go back to the home page.
-                </p>
-                <a class="btn btn-primary" href="/">Go to home</a>
-            </div>
-        </LayoutView>
-    </NotFound>
-</Router>
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    @if (context.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToLogin />
+                    }
+                    else
+                    {
+                        <div class="page-header">
+                            <h1 class="page-title mb-0">Access denied</h1>
+                        </div>
+                        <div class="info-card" style="margin: 0 1.75rem;">
+                            <p>You don't have permission to view this page. Contact an administrator if you think this is wrong.</p>
+                        </div>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <p class="text-muted" style="padding: 1.75rem;">Checking access…</p>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+        <NotFound>
+            <PageTitle>Page not found · Abdulla</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="not-found-page" role="alert">
+                    <div class="not-found-code">404</div>
+                    <h1 class="not-found-title">Page not found</h1>
+                    <p class="not-found-body">
+                        The page you’re looking for doesn’t exist or was moved.
+                        Use the navigation on the left, or go back to the home page.
+                    </p>
+                    <a class="btn btn-primary" href="/">Go to home</a>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

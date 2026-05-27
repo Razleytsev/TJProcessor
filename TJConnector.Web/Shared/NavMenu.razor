@@ -1,6 +1,7 @@
 @* Sidebar adopted from the Changer reference: single dark surface,
    rounded nav items, accent left-bar on the active route, version tag
-   at the foot. *@
+   at the foot. Test-Run link is admin-only (same pattern as Changer's
+   Settings link). *@
 
 <div class="sidebar">
     <a href="/" class="brand" aria-label="Abdulla — go to home">Abdulla</a>
@@ -15,9 +16,11 @@
         <NavLink class="nav-link" href="products">
             Products
         </NavLink>
-        <NavLink class="nav-link" href="test-run">
-            Test Run
-        </NavLink>
+        <AuthorizeView Roles="Admin">
+            <NavLink class="nav-link" href="test-run">
+                Test Run
+            </NavLink>
+        </AuthorizeView>
     </nav>
 
     <div class="nav-footer">
@@ -26,8 +29,6 @@
 </div>
 
 @code {
-    // Mobile toggler retained as no-op; the sidebar is always visible
-    // at the desktop breakpoint (which is what this admin tool ships at).
     private bool collapseNavMenu = true;
     private void ToggleNavMenu() => collapseNavMenu = !collapseNavMenu;
 }
