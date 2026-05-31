@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="240" height="56" viewBox="0 0 240 56">
+  <rect width="56" height="56" rx="14" fill="#b6522d"></rect>
+  <text x="28" y="28" fill="#fff" text-anchor="middle" dominant-baseline="central" font-family="&#39;DM Mono&#39;, ui-monospace, &#39;SF Mono&#39;, Menlo, monospace" font-weight="700" font-size="26" letter-spacing="-1">TJ</text>
+  <text x="80" y="29" fill="#f1f5f9" dominant-baseline="central" font-family="&#39;Sora&#39;, system-ui, sans-serif" font-weight="600" font-size="22" letter-spacing="-0.5">TJConnector</text>
+</svg>

@@ -8,17 +8,9 @@
 <div class="page">
     <NavMenu />
     <main class="main-content">
-        <div class="top-bar">
-            <span class="env-tag">Production-Test Contour</span>
-            <AuthorizeView>
-                <Authorized>
-                    <span class="user-name ms-3">@context.User.Identity?.Name</span>
-                    @* Lightweight confirm before signing out — same pattern as the Changer reference. *@
-                    <a href="/logout" class="btn btn-sm btn-outline ms-2"
-                       onclick="return confirm('Sign out?');">Logout</a>
-                </Authorized>
-            </AuthorizeView>
-        </div>
+        @* Top-bar removed: the deployment-contour tag moved into the fixed
+           sidebar foot (NavMenu), on its own row ABOVE the version + user. This
+           reclaims the full content height and removes the only top chrome. *@
         <div class="content-area">
             @Body
         </div>

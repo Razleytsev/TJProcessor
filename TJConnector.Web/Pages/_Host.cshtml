@@ -11,11 +11,66 @@
     <base href="~/" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" asp-append-version="true" />
     <link href="css/site.css" rel="stylesheet" asp-append-version="true" />
+    <link href="css/calmops/colors_and_type.css" rel="stylesheet" asp-append-version="true" />
+    <link href="css/calmops/components.css" rel="stylesheet" asp-append-version="true" />
     <link href="TJConnector.Web.styles.css" rel="stylesheet" asp-append-version="true" />
-    <link rel="icon" type="image/png" href="favicon.png"/>
+    <style>
+        /* CalmOps accent lock for TJ: the canonical single accent is #2563eb.
+           The shared components.css uses --action-primary (#2f62c4); pin the
+           primary button + focus rings to #2563eb here (loaded last → wins). */
+        .co-btn-primary {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #fff;
+        }
+        .co-btn-primary:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+        }
+        .co-btn:focus-visible,
+        .co-input:focus {
+            outline-color: #2563eb;
+            border-color: #2563eb;
+        }
+        .co-input:focus {
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+        /* Headings are display-only — never interactive. ServerPrerendered/
+           FocusOnNavigate can give a heading a tabindex and focus it on load,
+           which the components.css [tabindex]:focus-visible a11y rule then
+           paints with a blue outline (making "Sign in" look like an input).
+           Suppress outline/box-shadow/border on headings in every focus state.
+           This loads after components.css so it wins; interactive elements
+           (.co-btn, .co-input, links) keep their focus ring untouched. */
+        h1, h2, h3, h4, h5, h6,
+        h1:focus, h2:focus, h3:focus, h4:focus, h5:focus, h6:focus,
+        h1:focus-visible, h2:focus-visible, h3:focus-visible,
+        h4:focus-visible, h5:focus-visible, h6:focus-visible {
+            outline: none;
+            box-shadow: none;
+            border: none;
+        }
+        /* Centered login card sizing (replaces the legacy .login-box box-model). */
+        .login-card {
+            width: 360px;
+            max-width: 92vw;
+            padding: 2.25rem 2.5rem;
+        }
+        .login-card .login-title {
+            margin: 0 0 1.5rem;
+            text-align: center;
+            font-size: 1.35rem;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            color: var(--text-strong);
+        }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="brand/favicon.svg" asp-append-version="true" />
+    <link rel="icon" type="image/png" sizes="32x32" href="brand/favicon-32.png" />
+    <link rel="apple-touch-icon" href="brand/apple-touch-icon.png" />
     <component type="typeof(HeadOutlet)" render-mode="ServerPrerendered" />
 </head>
 <body>
@@ -53,6 +108,7 @@
         }
     </script>
     <script src="js/interop.js"></script>
+    <script src="css/calmops/calm-ops.js" asp-append-version="true"></script>
 </body>
 </html>
 

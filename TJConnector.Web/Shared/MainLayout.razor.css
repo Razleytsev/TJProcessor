@@ -2,9 +2,13 @@
    stack with a thin top-bar). The page-root-flex pages still slot into
    .content-area and take 100% width inside it. */
 
+/* Fixed app shell: the page is exactly one viewport tall and never scrolls
+   itself — only .content-area scrolls. Keeps the dark sidebar (and its
+   pinned user foot) fixed while the data area moves. (Calm Ops .co-app.) */
 .page {
     display: flex;
-    min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
     background: var(--bg-app);
 }
 
@@ -14,43 +18,21 @@
     flex-direction: column;
     background-color: var(--bg-app);
     min-width: 0;
+    /* min-height:0 lets the column shrink so .content-area's overflow works. */
+    min-height: 0;
 }
 
-.top-bar {
-    display: flex;
-    align-items: center;
-    padding: 0.45rem 1.75rem;
-    background: var(--bg-surface);
-    border-bottom: 1px solid var(--border-subtle);
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    min-height: 44px;
-    gap: 0.4rem;
-    box-sizing: border-box;
-}
-
-.env-tag {
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin-right: auto;
-}
-
-.user-name {
-    font-weight: 500;
-    color: var(--text);
-    font-size: 0.85rem;
-}
+/* (Removed: .top-bar / .env-tag / .user-name — the top-bar was deleted and the
+   deployment-contour tag + user moved into the sidebar foot in NavMenu.) */
 
 .content-area {
     flex: 1;
-    /* min-height: 0 allows .page-root-flex to shrink within the column;
-       a fallback floor keeps the split-pane divider reachable on very
-       short windows (F10). */
-    min-height: 0;
+    /* The single scroll surface: the fixed shell keeps everything else put,
+       so the content area scrolls on overflow. The 480px floor keeps the
+       split-pane divider reachable on very short windows (F10) — inside a
+       scroll container it just sets the minimum scrollable height. */
     min-height: 480px;
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
 }

@@ -1,0 +1,214 @@
+/* ============================================================================
+   CHANGER DESIGN SYSTEM — colors_and_type.css
+   Distilled from the Changer app (wwwroot/app.css, 2026-05-26 UI overhaul).
+   Load this for foundations; load calm-ops/components.css for the full Calm Ops
+   component layer (shell, buttons, tables, forms, status, modal, toast, states…).
+
+   Fonts: Inter (UI) + JetBrains Mono (monospace values). Both load from
+   Google Fonts CDN — see the @import below. The product CSS falls back to
+   the system UI stack if Inter is unavailable.
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+    /* ---- Base color palette (raw tokens) ---------------------------------- */
+    /* Surfaces & background */
+    --bg-app:          #f7f8fa;   /* app canvas — cool off-white */
+    --bg-surface:      #ffffff;   /* cards, tables, inputs */
+    --bg-surface-alt:  #f8fafc;   /* hover rows, nested headers, chips */
+    --border-subtle:   #eef0f4;   /* card / table outlines */
+    --border:          #e2e6ec;   /* inputs, dividers */
+
+    /* Text (slate ramp) */
+    --text-strong:     #0f172a;   /* headings, primary values */
+    --text:            #1e293b;   /* body */
+    --text-muted:      #64748b;   /* labels, captions, secondary */
+    --text-faint:      #94a3b8;   /* placeholders, disabled, masked */
+
+    /* Accent (blue) */
+    --accent:          #2563eb;
+    --accent-hover:    #1d4ed8;
+    --accent-soft:     #eff4ff;   /* selected-row tint, icon hover bg */
+
+    /* Sidebar (near-black slate — the one dark surface) */
+    --sidebar-bg:          #111827;
+    --sidebar-border:      #1f2937;
+    --sidebar-text:        #cbd5e1;
+    --sidebar-text-strong: #f1f5f9;
+    --sidebar-text-faint:  #6b7280;
+    --sidebar-active-bar:  #2563eb;   /* 3px inset accent on active nav link — single canonical accent */
+    --sidebar-danger:      #f87171;   /* logout hover */
+
+    /* ---- Semantic status colors (badges, rows, alerts) -------------------- */
+    /* Each status reads as fill / text / border. */
+    --status-info-bg:      #eff4ff;  --status-info-fg:      #1d4ed8;  --status-info-border:      #dbe5fb;
+    --status-success-bg:   #ecfdf3;  --status-success-fg:   #15803d;  --status-success-border:   #c6f0d5;
+    --status-warning-bg:   #fff7e6;  --status-warning-fg:   #92400e;  --status-warning-border:   #fdebc1;
+    --status-danger-bg:    #fef1f2;  --status-danger-fg:    #b42318;  --status-danger-border:    #fbd1d4;
+    --status-secondary-bg: #f1f5f9;  --status-secondary-fg: #475569;  --status-secondary-border: #e2e8f0;
+    --status-primary-bg:   #eef0ff;  --status-primary-fg:   #3730a3;  --status-primary-border:   #dcdefb;
+    --status-paused-bg:    #fff3e6;  --status-paused-fg:    #9a3412;  --status-paused-border:    #ffdcb8;
+
+    /* Row attention tints (whole-row signalling on data tables) */
+    --row-warn-bg:         #fdf4f4;  --row-warn-bar:         #e7a3a0;  /* no active permit doc */
+    --row-expiring-bg:     #fdfaef;  --row-expiring-bar:     #e0b65a;  /* permit doc expiring soon */
+    --row-selected-bg:     #f1f7ff;  /* selected / active row */
+    --detail-bg:           #fafbfd;  /* expanded detail panel */
+
+    /* ---- CALM OPS — locked scheme (single source of truth) ----------------
+       Methodology: neutrals do ~90% of the work; ONE accent, used sparingly for
+       the single primary action / links / focus / selection; semantic color is
+       reserved for STATE (alerts, toasts, status) and never used as decoration.
+       Every component references these vars — no raw hexes live in component CSS. */
+
+    /* Primary action — a calm accent, NOT near-black (black reads severe, not calm)
+       and NOT neon. One primary per view; everything else is a neutral button. */
+    --action-primary:       #2563eb;  /* canonical single accent (was #2f62c4) */
+    --action-primary-hover: #264f9e;
+    --action-primary-fg:    #ffffff;
+
+    /* Inverse surface (tooltip / hover-card) — soft off-black slate, not pure black. */
+    --surface-inverse:    #1e293b;
+    --surface-inverse-fg: #f1f5f9;
+
+    /* Field change-highlight (a value edited but unsaved) — muted amber, tokenized. */
+    --field-changed-border: #d6a32e;
+    --field-changed-bg:     #fffdf5;
+
+    /* Status DOT palette — deliberately muted + held at a consistent chroma so a
+       whole column of them reads as quiet signal, never a rainbow of fills.
+       Greens reconciled to ONE value shared with semantic success below. */
+    --dot-info:      #3f72c9;
+    --dot-success:   #389b6a;
+    --dot-warning:   #d39a30;
+    --dot-danger:    #cf5149;
+    --dot-secondary: #94a3b8;
+    --dot-primary:   #6f72c9;
+    --dot-paused:    #db854a;
+
+    /* ---- Typography ------------------------------------------------------- */
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "Cascadia Code", "Fira Code", ui-monospace,
+                 SFMono-Regular, Menlo, Consolas, monospace;
+
+    /* Type scale (rem; root = 16px). The UI is dense — note the small sizes. */
+    --fs-page-title:  1.35rem;  /* h3 page headers, login h2 — weight 600, tight -0.015em */
+    --fs-stat:        1.5rem;   /* dashboard stat-card numbers — weight 600 */
+    --fs-modal-title: 1.05rem;  /* modal h5 */
+    --fs-body:        0.9rem;   /* form values, info-grid dd */
+    --fs-table:       0.86rem;  /* table cell text */
+    --fs-control:     0.85rem;  /* buttons, top-bar, body controls */
+    --fs-label:       0.82rem;  /* form labels, filters, toggles */
+    --fs-meta:        0.78rem;  /* pagination meta, chips, faint captions */
+    --fs-overline:    0.72rem;  /* UPPERCASE section/stat/th labels */
+    --fs-overline-sm: 0.66rem;  /* tightest overlines (info-group titles) */
+
+    --fw-regular: 400;
+    --fw-medium:  500;
+    --fw-semibold:600;
+    --fw-bold:    700;
+
+    /* Letter-spacing: tighten display, widen overlines */
+    --ls-title:    -0.015em;
+    --ls-overline:  0.06em;   /* uppercase eyebrow labels */
+
+    /* ---- Radii, shadows, spacing ----------------------------------------- */
+    --radius:    8px;   /* cards */
+    --radius-sm: 6px;   /* tables, inputs, buttons, badges-as-pills use 999px */
+    --radius-pill: 999px;
+
+    --shadow-1: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);  /* cards, tables */
+    --shadow-2: 0 4px 10px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.05); /* dropdowns */
+    --shadow-modal: 0 20px 60px rgba(15, 23, 42, 0.25), 0 4px 12px rgba(15, 23, 42, 0.1);
+    --shadow-toast: 0 8px 24px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.08);
+
+    /* Focus ring — consistent across all interactive elements */
+    --focus-ring: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    --focus-outline: 2px solid var(--accent);
+
+    /* The content rhythm: 1.75rem page padding, 1.1rem card gaps, 0.6–0.85rem cell pad */
+    --space-page:  1.75rem;
+    --space-card:  1.1rem;
+    --sidebar-width: 232px;
+}
+
+/* ============================================================================
+   SEMANTIC TYPE CLASSES
+   Map these onto headings / body so type stays consistent outside the
+   product's component CSS. The product itself styles via .page-header h3,
+   .stat-value, .info-group-title etc — these mirror those.
+   ============================================================================ */
+
+body {
+    font-family: var(--font-sans);
+    color: var(--text);
+    background: var(--bg-app);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Inter stylistic sets used in the product */
+    font-feature-settings: "cv11", "ss01", "ss03";
+}
+
+.ds-page-title {
+    font-size: var(--fs-page-title);
+    font-weight: var(--fw-semibold);
+    color: var(--text-strong);
+    letter-spacing: var(--ls-title);
+    margin: 0;
+}
+
+.ds-overline {
+    font-size: var(--fs-overline);
+    font-weight: var(--fw-semibold);
+    color: var(--text-muted);
+    letter-spacing: 0.005em;
+    /* Quiet small-label treatment — hierarchy from size + weight + color,
+       not from UPPERCASE. (Evolved away from the product's caps overlines.) */
+}
+
+.ds-stat {
+    font-size: var(--fs-stat);
+    font-weight: var(--fw-semibold);
+    color: var(--text-strong);
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.ds-body  { font-size: var(--fs-body);  color: var(--text); }
+.ds-muted { font-size: var(--fs-control); color: var(--text-muted); }
+.ds-mono  { font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-strong); word-break: break-all; }
+
+/* Numbers in tables and stats always use tabular figures */
+.ds-tnum { font-variant-numeric: tabular-nums; }
+
+/* ============================================================================
+   STATUS INDICATORS  (evolved away from saturated tinted pills)
+   A small colored dot + a slate label. The dot carries the signal; the text
+   stays calm so a column of statuses doesn't read as a row of loud pills.
+   Usage:  <span class="status"><i class="dot dot-success"></i>Completed</span>
+   ============================================================================ */
+.status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: var(--fs-table);
+    color: var(--text);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+.status .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background: var(--dot, #94a3b8);
+}
+.dot-info      { --dot: var(--dot-info); }       /* PDA checking · New op */
+.dot-success   { --dot: var(--dot-success); }    /* Finished · Completed · Active */
+.dot-warning   { --dot: var(--dot-warning); }    /* Processing · Submitted */
+.dot-danger    { --dot: var(--dot-danger); }     /* Failed · errors */
+.dot-secondary { --dot: var(--dot-secondary); }  /* Planned · Canceled · neutral */
+.dot-primary   { --dot: var(--dot-primary); }    /* Awaiting Result */
+.dot-paused    { --dot: var(--dot-paused); }     /* Paused */

@@ -9,6 +9,21 @@ using TJConnector.Web.Services.Implementation;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// The default Windows EventLog logging provider throws BadImageFormatException
+// while serialising the stack trace of any exception that references a
+// hot-reload-regenerated Razor type (e.g. Pages__Host). That logging failure
+// surfaces as an unhandled AggregateException which aborts the response with an
+// empty body (e.g. /batches returning HTTP 0 / no DOM after a transient
+// downstream cancellation). Remove the EventLog provider so a logged exception
+// can never take down the response pipeline.
+builder.Logging.AddFilter<Microsoft.Extensions.Logging.EventLog.EventLogLoggerProvider>(null, LogLevel.None);
+foreach (var d in builder.Logging.Services
+             .Where(s => s.ImplementationType == typeof(Microsoft.Extensions.Logging.EventLog.EventLogLoggerProvider))
+             .ToList())
+{
+    builder.Logging.Services.Remove(d);
+}
+
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor()
     .AddHubOptions(options =>

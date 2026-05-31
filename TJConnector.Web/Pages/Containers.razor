@@ -12,9 +12,9 @@
 <div class="toast-container" aria-live="polite" aria-atomic="true">
     @foreach (var t in toasts)
     {
-        <div class="toast @t.CssClass" role="status">
+        <div class="co-toast @(t.CssClass == "toast-error" ? "co-toast-error" : "co-toast-success")" role="status">
             <span class="toast-msg">@t.Message</span>
-            <button class="toast-close" type="button"
+            <button class="toast-close co-btn-icon" type="button"
                     aria-label="Dismiss notification"
                     @onclick="() => DismissToast(t)">×</button>
         </div>
@@ -38,7 +38,9 @@
                     <dt>Status</dt>
                     <dd>
                         @{ var (pc, pl) = PkgStatusInfo(detailPackage.Status); }
-                        <span class="badge @pc" title="Internal status code: @detailPackage.Status">@pl</span>
+                        <span class="co-status" title="Internal status code: @detailPackage.Status">
+                            <span class="co-dot @pc"></span>@pl
+                        </span>
                     </dd>
                     <dt>Content App GUID</dt>  <dd class="cell-guid">@(detailPackage.ContentApplicationGuid?.ToString() ?? "—")</dd>
                     <dt>Aggregation GUID</dt>  <dd class="cell-guid">@(detailPackage.AggregationGuid?.ToString() ?? "—")</dd>
@@ -52,7 +54,7 @@
                        above. *@
                     <div class="mt-2">
                         <small class="text-muted fw-semibold">Status History</small>
-                        <table class="table table-sm table-xs-font mt-1">
+                        <table class="co-table co-table-nested table table-sm table-xs-font mt-1">
                             <thead><tr><th>Status</th><th>Date</th></tr></thead>
                             <tbody>
                                 @foreach (var h in detailPackage.StatusHistory.OrderBy(x => x.StatusDate))
@@ -70,12 +72,12 @@
             <div class="modal-dialog-footer">
                 @if (detailPackage.Status < 0)
                 {
-                    <button class="btn btn-sm btn-warning" disabled="@isReprocessingSingle"
+                    <button class="co-btn co-btn-default co-btn-sm" disabled="@isReprocessingSingle"
                             @onclick="ReprocessSinglePackage">
                         @(isReprocessingSingle ? "Reprocessing…" : "Reprocess")
                     </button>
                 }
-                <button class="btn btn-sm btn-outline" @onclick="ClosePackageDetail">Close</button>
+                <button class="co-btn co-btn-ghost co-btn-sm" @onclick="ClosePackageDetail">Close</button>
             </div>
         </div>
     </div>
@@ -102,8 +104,8 @@
                                   style="height:280px; font-family:'JetBrains Mono','IBM Plex Mono',monospace; font-size:11px;"
                                   @onchange="HandleManualInputChange"
                                   placeholder="@("Code line\nSSCC line\nCode line\nSSCC line…")"></textarea>
-                        <button class="btn btn-sm btn-outline-secondary mt-2"
-                                @onclick="LoadCodesFromFile">📂 Load from file</button>
+                        <button class="co-btn co-btn-default co-btn-sm mt-2"
+                                @onclick="LoadCodesFromFile">Load from file</button>
                         @if (validationError)
                         {
                             <div class="alert alert-warning py-1 px-2 text-xs mt-2">
@@ -114,7 +116,7 @@
                     <!-- Right: preview table -->
                     <div style="flex:5; min-width:0; overflow-x:auto;">
                         <label class="form-label-sm">Preview (@packageCouples.Count pairs)</label>
-                        <table class="table table-sm table-xs-font table-bordered">
+                        <table class="co-table co-table-nested table table-sm table-xs-font table-bordered">
                             <thead class="table-light">
                                 <tr><th>Code</th><th>SSCC</th><th>✓</th></tr>
                             </thead>
@@ -145,8 +147,8 @@
                 }
             </div>
             <div class="modal-dialog-footer">
-                <button class="btn btn-sm btn-outline" @onclick="CloseSubmitModal">Cancel</button>
-                <button class="btn btn-sm btn-primary"
+                <button class="co-btn co-btn-ghost co-btn-sm" @onclick="CloseSubmitModal">Cancel</button>
+                <button class="co-btn co-btn-primary co-btn-sm"
                         disabled="@(isSubmitting || validationError || !packageCouples.Any())"
                         @onclick="SubmitContainers">
                     @(isSubmitting ? "Submitting…" : "Submit")
@@ -160,25 +162,28 @@
 <div class="page-root-flex">
 
     <!-- Header -->
-    <div class="page-header">
+    <div class="page-header co-page-header">
         <h1 class="page-title mb-0">Submission Requests</h1>
-        <div class="d-flex align-items-center gap-2 ms-auto">
+        <div class="co-actions d-flex align-items-center gap-2 ms-auto">
             <span class="refresh-pill @(isRefreshing ? "is-refreshing" : "")"
                   title="Auto-refreshes every @refreshInterval s">
                 <span class="refresh-dot" aria-hidden="true"></span>
                 @refreshInterval s
             </span>
-            <button class="btn btn-sm btn-primary" @onclick="ShowSubmitModal">+ Submit Containers</button>
+            <button class="co-btn co-btn-primary co-btn-sm" @onclick="ShowSubmitModal">Submit Containers</button>
         </div>
     </div>
 
     <!-- Split pane -->
     <div class="split-pane-wrapper" id="req-split-wrapper">
 
-        @* When no request is selected, size the top pane to its content so a
-           short table doesn't render as a giant empty card. *@
+        @* TJ-jerk fix: the top pane keeps the SAME fixed height whether or not a
+           request is selected, and the divider + bottom (packages) pane stay
+           laid out at all times — so selecting / closing a request no longer
+           reflows the requests list. While nothing is selected the bottom pane
+           holds a calm placeholder. *@
         <!-- ── TOP: requests list ─────────────────────────────── -->
-        <div class="split-pane-top" style="flex: @(selectedRequest == null ? "0 1 auto" : $"0 0 {topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%"); max-height: 100%;">
+        <div class="split-pane-top" style="flex: 0 0 @(topPct.ToString("F1", System.Globalization.CultureInfo.InvariantCulture))%; max-height: 100%;">
             @{
                 var requestCount = requests?.Count() ?? 0;
             }
@@ -199,7 +204,7 @@
                 }
                 else
                 {
-                    <table class="table table-sm table-xs-font table-hover mb-0">
+                    <table class="co-table table table-sm table-xs-font table-hover mb-0">
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th class="col-id">ID</th>
@@ -215,7 +220,7 @@
                             @foreach (var req in PagedRequests)
                             {
                                 var counts = _counts.GetValueOrDefault(req.Id);
-                                <tr class="@(selectedRequest?.Id == req.Id ? "highlighted-row" : "")"
+                                <tr class="co-row-clickable @(selectedRequest?.Id == req.Id ? "co-row-active highlighted-row" : "")"
                                     style="cursor:pointer;" @onclick="() => SelectRequest(req)">
                                     <td class="col-id">@req.Id</td>
                                     <td>@(req.Filename ?? "—")</td>
@@ -230,27 +235,32 @@
                     </table>
                     @if (ReqTotalPages > 1)
                     {
-                        <div class="pagination-bar">
-                            <button class="pg-btn" disabled="@(reqPage <= 1)" @onclick="() => reqPage--">&#8249;</button>
-                            <span class="pg-info">@reqPage / @ReqTotalPages</span>
-                            <button class="pg-btn" disabled="@(reqPage >= ReqTotalPages)" @onclick="() => reqPage++">&#8250;</button>
+                        @* A1: unified CalmOps pager |‹ ‹ n of m (x requests) › ›|. *@
+                        <div class="co-pager-footer">
+                            <CoPager Page="reqPage" TotalPages="ReqTotalPages"
+                                     TotalCount="@(requests?.Count() ?? 0)" ResultNoun="request"
+                                     OnPageChange="@(p => reqPage = p)" />
                         </div>
                     }
                 }
             </div>
         </div>
 
-        @* Hide divider + packages pane (display:none) when no request is
-           selected so the top pane fills available height. JS drag handler
-           stays attached because the DOM elements remain. *@
+        @* Divider + packages pane are ALWAYS present (space reserved) so the
+           list above never jerks when a request opens/closes. The divider is
+           non-interactive (faded) while nothing is selected. *@
         <!-- ── Drag divider ──────────────────────────────────── -->
-        <div class="split-pane-divider" id="req-divider" style="@(selectedRequest == null ? "display:none;" : "")">
+        <div class="split-pane-divider @(selectedRequest == null ? "is-inert" : "")" id="req-divider">
             <div class="divider-grip"></div>
         </div>
 
         <!-- ── BOTTOM: packages ───────────────────────────────── -->
-        <div class="split-pane-bottom" style="@(selectedRequest == null ? "display:none;" : "")">
-            @if (selectedRequest != null)
+        <div class="split-pane-bottom">
+            @if (selectedRequest == null)
+            {
+                <div class="co-detail-placeholder">Select a request to view its packages.</div>
+            }
+            else
             {
             <div class="pane-toolbar">
                 <span class="pane-title">Packages — Request #@selectedRequest.Id</span>
@@ -267,20 +277,20 @@
                     var createdCount = selectedDetail?.Packages?.Count(p => p.Status == 0) ?? 0;
                     @if (createdCount > 0)
                     {
-                        <button class="btn btn-sm btn-outline-info ms-auto"
+                        <button class="co-btn co-btn-default co-btn-sm ms-auto"
                                 @onclick="ReprocessCreated">
-                            ↻ Reprocess Created (@createdCount)
+                            Reprocess Created (@createdCount)
                         </button>
                     }
                     @if (errorCount > 0)
                     {
-                        <button class="btn btn-sm btn-outline-warning @(createdCount > 0 ? "" : "ms-auto")"
+                        <button class="co-btn co-btn-default co-btn-sm @(createdCount > 0 ? "" : "ms-auto")"
                                 @onclick="ReprocessAll">
-                            ↻ Reprocess All Errors (@errorCount)
+                            Reprocess All Errors (@errorCount)
                         </button>
                     }
                 }
-                <button class="btn-icon ms-2" aria-label="Close packages pane" title="Close"
+                <button class="co-btn-icon ms-2" aria-label="Close packages pane" title="Close"
                         @onclick="() => { selectedRequest = null; selectedDetail = null; }">×</button>
             </div>
             <div class="pane-scroll">
@@ -294,7 +304,7 @@
                 }
                 else
                 {
-                    <table class="table table-sm table-xs-font mb-0">
+                    <table class="co-table table table-sm table-xs-font mb-0">
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th>ID</th>
@@ -309,19 +319,26 @@
                             @foreach (var pkg in PagedPackages)
                             {
                                 var (pc, pl) = PkgStatusInfo(pkg.Status);
-                                <tr style="cursor:pointer;" @onclick="() => OpenPackageDetail(pkg)">
-                                    <td>@pkg.Id</td>
-                                    <td class="cell-guid" style="max-width:200px;">@pkg.Code</td>
-                                    <td class="cell-guid" style="max-width:160px;">@(pkg.SSCCCode ?? "—")</td>
-                                    <td><span class="badge @pc">@pl</span></td>
-                                    <td>@pkg.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
+                                <tr class="co-row-clickable" style="cursor:pointer;" @onclick="() => OpenPackageDetail(pkg)">
+                                    <td class="co-copy-cell" data-co-copy="@pkg.Id">@pkg.Id</td>
+                                    <td class="cell-guid co-mono co-copy-cell" style="max-width:200px;" data-co-copy="@pkg.Code">@pkg.Code</td>
+                                    @if (!string.IsNullOrEmpty(pkg.SSCCCode))
+                                    {
+                                        <td class="cell-guid co-mono co-copy-cell" style="max-width:160px;" data-co-copy="@pkg.SSCCCode">@pkg.SSCCCode</td>
+                                    }
+                                    else
+                                    {
+                                        <td class="cell-guid co-mono" style="max-width:160px;">—</td>
+                                    }
+                                    <td class="co-copy-cell" data-co-copy="@pl"><span class="co-status"><span class="co-dot @pc"></span>@pl</span></td>
+                                    <td class="co-copy-cell" data-co-copy="@pkg.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")">@pkg.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
                                     <td class="cell-actions" @onclick:stopPropagation="true">
                                         @if (pkg.Status < 0)
                                         {
-                                            <button class="btn-xs btn btn-outline-warning"
+                                            <button class="co-btn co-btn-default co-btn-sm"
                                                     aria-label="Reprocess package @pkg.Id"
                                                     title="Reprocess this package"
-                                                    @onclick="() => ReprocessSingle(pkg)">↻ Retry</button>
+                                                    @onclick="() => ReprocessSingle(pkg)">Retry</button>
                                         }
                                     </td>
                                 </tr>
@@ -330,10 +347,11 @@
                     </table>
                     @if (PkgTotalPages > 1)
                     {
-                        <div class="pagination-bar">
-                            <button class="pg-btn" disabled="@(pkgPage <= 1)" @onclick="() => pkgPage--">&#8249;</button>
-                            <span class="pg-info">@pkgPage / @PkgTotalPages (@(selectedDetail.Packages?.Count) total)</span>
-                            <button class="pg-btn" disabled="@(pkgPage >= PkgTotalPages)" @onclick="() => pkgPage++">&#8250;</button>
+                        @* A1: unified CalmOps pager |‹ ‹ n of m (x packages) › ›|. *@
+                        <div class="co-pager-footer">
+                            <CoPager Page="pkgPage" TotalPages="PkgTotalPages"
+                                     TotalCount="@(selectedDetail.Packages?.Count ?? 0)" ResultNoun="package"
+                                     OnPageChange="@(p => pkgPage = p)" />
                         </div>
                     }
                 }
@@ -683,32 +701,32 @@
     }
 
     // ── Status helpers ────────────────────────────────────────────────────
-    // B4: render request status as a proper badge so the Requests table is
+    // B4: render request status as a CalmOps dot+label so the Requests table is
     // visually consistent with the Packages sub-table, /batches and the
-    // package-detail modal (all of which use the badge+dot pattern).
-    private static (string css, string label) ReqStatusInfo(int status) => status switch
+    // package-detail modal (all of which use the .co-status dot+slate pattern).
+    private static (string dot, string label) ReqStatusInfo(int status) => status switch
     {
-        0 => ("badge-created", "Created"),
-        _ => ("badge-unknown", $"Status {status}")
+        0 => ("co-dot-info", "Created"),
+        _ => ("co-dot-secondary", $"Status {status}")
     };
 
     private static Microsoft.AspNetCore.Components.MarkupString ReqStatusBadge(int status)
     {
-        var (css, label) = ReqStatusInfo(status);
+        var (dot, label) = ReqStatusInfo(status);
         return new Microsoft.AspNetCore.Components.MarkupString(
-            $"<span class=\"badge {css}\">{System.Net.WebUtility.HtmlEncode(label)}</span>");
+            $"<span class=\"co-status\"><span class=\"co-dot {dot}\"></span>{System.Net.WebUtility.HtmlEncode(label)}</span>");
     }
 
     // Note: written as if/else (not a switch with relational patterns) because
     // the Razor parser in .NET 8/9 SDK chokes on `< 0` inside @code blocks.
-    private static (string css, string label) PkgStatusInfo(int status)
+    private static (string dot, string label) PkgStatusInfo(int status)
     {
-        if (status < 0)                    return ("badge-error",      GetStatusLabel(status));
-        if (status == 0)                   return ("badge-created",    "Created");
-        if (status >= 1 && status <= 3)    return ("badge-info",       GetStatusLabel(status));
-        if (status >= 4 && status <= 11)   return ("badge-processing", GetStatusLabel(status));
-        if (status == 12)                  return ("badge-completed",  "Reported");
-        return ("badge-unknown", $"Status {status}");
+        if (status < 0)                    return ("co-dot-danger",    GetStatusLabel(status));
+        if (status == 0)                   return ("co-dot-info",      "Created");
+        if (status >= 1 && status <= 3)    return ("co-dot-info",      GetStatusLabel(status));
+        if (status >= 4 && status <= 11)   return ("co-dot-warning",   GetStatusLabel(status));
+        if (status == 12)                  return ("co-dot-success",   "Reported");
+        return ("co-dot-secondary", $"Status {status}");
     }
 
     private static string GetStatusLabel(int s) => s switch

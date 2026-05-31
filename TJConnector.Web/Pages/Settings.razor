@@ -7,14 +7,16 @@
 
 <PageTitle>Settings · Abdulla</PageTitle>
 
-<div class="page-header">
+<div class="page-header co-page-header">
     <h1 class="page-title mb-0">Settings</h1>
-    <button class="btn btn-outline btn-sm ms-auto" @onclick="ReloadAsync" disabled="@loading">
-        @(loading ? "Reloading…" : "Reload")
-    </button>
+    <div class="co-actions">
+        <button class="btn btn-outline btn-sm ms-auto co-btn co-btn-default co-btn-sm" @onclick="ReloadAsync" disabled="@loading">
+            @(loading ? "Reloading…" : "Reload")
+        </button>
+    </div>
 </div>
 
-<div class="alert alert-info" style="margin: 0 1.75rem 1rem;">
+<div class="alert alert-info co-alert" style="margin: 0 1.75rem 1rem;">
     <p>
         Read-only snapshot of the running configuration. Editing requires updating
         <code>appsettings.json</code> on the corresponding host and restarting the service.
@@ -24,17 +26,17 @@
 
 @if (loadError is not null)
 {
-    <div class="alert alert-error" style="margin: 0 1.75rem 1rem;">
+    <div class="alert alert-error co-alert co-alert-error" style="margin: 0 1.75rem 1rem;">
         <p>@loadError</p>
-        <button class="btn btn-outline btn-sm" @onclick="ReloadAsync" style="margin-top:0.4rem;">Retry</button>
+        <button class="btn btn-outline btn-sm co-btn co-btn-default co-btn-sm" @onclick="ReloadAsync" style="margin-top:0.4rem;">Retry</button>
     </div>
 }
 
 <div style="padding: 0 1.75rem 1.5rem;">
     @* Web-side config (env vars, this Blazor host's appsettings) *@
-    <div class="info-card">
-        <h5>Web Host</h5>
-        <table class="data-table">
+    <div class="info-card co-card">
+        <div class="co-section-header"><h2>Web Host</h2></div>
+        <table class="data-table co-table">
             <thead>
                 <tr>
                     <th style="width:32%;">Key</th>
@@ -45,7 +47,7 @@
             <tbody>
                 @foreach (var row in WebRows)
                 {
-                    @RenderRow(row)
+                    @SettingRowMarkup(row)
                 }
             </tbody>
         </table>
@@ -54,17 +56,17 @@
     @* API-side config (fetched from /api/settings) *@
     @if (apiSections is null && loadError is null)
     {
-        <div class="info-card">
-            <div class="loading-state">Loading API settings…</div>
+        <div class="info-card co-card">
+            <div class="loading-state co-state">Loading API settings…</div>
         </div>
     }
     else if (apiSections is not null)
     {
         @foreach (var grp in apiSections)
         {
-            <div class="info-card">
-                <h5>@grp.Title <span class="text-muted text-xs" style="font-weight:400;">— API host</span></h5>
-                <table class="data-table">
+            <div class="info-card co-card">
+                <div class="co-section-header"><h2>@grp.Title <span class="text-muted text-xs co-muted" style="font-weight:400;">— API host</span></h2></div>
+                <table class="data-table co-table">
                     <thead>
                         <tr>
                             <th style="width:32%;">Key</th>
@@ -75,7 +77,7 @@
                     <tbody>
                         @foreach (var row in grp.Rows)
                         {
-                            @RenderRow(new SettingRow(row.Key, row.Value, row.IsSensitive))
+                            @SettingRowMarkup(new SettingRow(row.Key, row.Value, row.IsSensitive))
                         }
                     </tbody>
                 </table>
@@ -117,31 +119,31 @@
         if (!revealed.Add(key)) revealed.Remove(key);
     }
 
-    private RenderFragment RenderRow(SettingRow row) =>
+    private RenderFragment SettingRowMarkup(SettingRow row) =>
         @<tr>
             <td>
-                @row.Key
+                <span class="co-mono">@row.Key</span>
                 @if (row.IsSensitive)
                 {
-                    <span class="badge badge-warning" style="margin-left:6px;" title="Sensitive — masked by default">S</span>
+                    <span class="badge badge-warning co-tag" style="margin-left:6px;" title="Sensitive — masked by default">Sensitive</span>
                 }
             </td>
             <td>
                 @if (row.IsSensitive)
                 {
-                    <span class="param-value sensitive">
+                    <span class="param-value sensitive co-sensitive">
                         @(revealed.Contains(row.Key) ? DisplayValue(row.Value) : MaskValue(row.Value))
                     </span>
                 }
                 else
                 {
-                    <span class="param-value">@DisplayValue(row.Value)</span>
+                    <span class="param-value co-mono">@DisplayValue(row.Value)</span>
                 }
             </td>
             <td>
                 @if (row.IsSensitive)
                 {
-                    <button class="btn-icon" @onclick="() => ToggleReveal(row.Key)"
+                    <button class="btn-icon co-btn co-btn-ghost co-btn-sm" @onclick="() => ToggleReveal(row.Key)"
                             title="@(revealed.Contains(row.Key) ? "Hide value" : "Show value")"
                             aria-label="@(revealed.Contains(row.Key) ? $"Hide value of {row.Key}" : $"Show value of {row.Key}")"
                             aria-pressed="@(revealed.Contains(row.Key) ? "true" : "false")">
@@ -150,7 +152,7 @@
                 }
                 else
                 {
-                    <span class="text-muted text-xs">—</span>
+                    <span class="text-muted text-xs co-empty-dash">—</span>
                 }
             </td>
         </tr>;

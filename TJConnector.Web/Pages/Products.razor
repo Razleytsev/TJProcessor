@@ -18,17 +18,22 @@
         {
             <CustomTable Items="products"
                          Columns="columns"
+                         CopyableCells="true"
                          OnRowClick="EventCallback.Factory.Create<Product>(this, OnProductClick)"
                          SelectedItem="selectedProduct" />
         }
     </div>
-    @* B2: always render the details panel once a row is selected — gate
-       only the body content on the external-API result. Otherwise a failed
-       external call silently does nothing, which is indistinguishable from
-       a frozen UI. *@
-    @if (selectedProduct != null)
-    {
-        <div class="details-container" style="flex:0 0 380px;font-size: 12px;">
+    @* TJ-jerk fix: the details panel is ALWAYS laid out (fixed 380px column) so
+       selecting / clearing a product never reflows the table. While nothing is
+       selected the column holds a calm placeholder instead of collapsing.
+       B2: gate only the body content on the external-API result. *@
+    <div class="details-container" style="flex:0 0 380px;font-size: 12px;">
+        @if (selectedProduct == null)
+        {
+            <div class="co-detail-placeholder">Select a product to view its external information.</div>
+        }
+        else
+        {
             <div class="d-flex align-items-center justify-content-between mb-2">
                 <h4 style="margin:0;font-size:0.82rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-muted);">External Product Information</h4>
                 <button class="btn-icon" aria-label="Close details" title="Close" @onclick="ClearSelection">×</button>
@@ -39,14 +44,14 @@
             }
             else if (selectedProductExternalInfo != null)
             {
-                <p><strong>Name:</strong> @selectedProductExternalInfo.name</p>
-                <p><strong>GTIN:</strong> @selectedProductExternalInfo.gtin</p>
-                <p><strong>Manufacturer:</strong> @selectedProductExternalInfo.manufacturerName</p>
-                <p><strong>Weight (Gross):</strong> @selectedProductExternalInfo.weightGross</p>
-                <p><strong>Dimensions:</strong> @selectedProductExternalInfo.length x @selectedProductExternalInfo.width x @selectedProductExternalInfo.height</p>
-                <p><strong>Storage Conditions:</strong> @selectedProductExternalInfo.storageConditions</p>
-                <p><strong>Composition:</strong> @selectedProductExternalInfo.composition</p>
-                <p><strong>Country of Origin:</strong> @selectedProductExternalInfo.productCountryOfOrigin</p>
+                <p><strong>Name:</strong> <span class="co-copy-cell" data-co-copy="@selectedProductExternalInfo.name">@selectedProductExternalInfo.name</span></p>
+                <p><strong>GTIN:</strong> <span class="co-copy-cell" data-co-copy="@selectedProductExternalInfo.gtin">@selectedProductExternalInfo.gtin</span></p>
+                <p><strong>Manufacturer:</strong> <span class="co-copy-cell" data-co-copy="@selectedProductExternalInfo.manufacturerName">@selectedProductExternalInfo.manufacturerName</span></p>
+                <p><strong>Weight (Gross):</strong> <span class="co-copy-cell" data-co-copy="@selectedProductExternalInfo.weightGross">@selectedProductExternalInfo.weightGross</span></p>
+                <p><strong>Dimensions:</strong> <span class="co-copy-cell" data-co-copy="@($"{selectedProductExternalInfo.length} x {selectedProductExternalInfo.width} x {selectedProductExternalInfo.height}")">@selectedProductExternalInfo.length x @selectedProductExternalInfo.width x @selectedProductExternalInfo.height</span></p>
+                <p><strong>Storage Conditions:</strong> <span class="co-copy-cell" data-co-copy="@selectedProductExternalInfo.storageConditions">@selectedProductExternalInfo.storageConditions</span></p>
+                <p><strong>Composition:</strong> <span class="co-copy-cell" data-co-copy="@selectedProductExternalInfo.composition">@selectedProductExternalInfo.composition</span></p>
+                <p><strong>Country of Origin:</strong> <span class="co-copy-cell" data-co-copy="@selectedProductExternalInfo.productCountryOfOrigin">@selectedProductExternalInfo.productCountryOfOrigin</span></p>
             }
             else
             {
@@ -62,8 +67,8 @@
                     }
                 </div>
             }
-        </div>
-    }
+        }
+    </div>
 </div>
 
 @code {

@@ -1,0 +1,44 @@
+@* CoPager — the unified CalmOps pagination control (A1).
+   Layout:  |‹  ‹   n of m (x results)   ›  ›|
+   First / Prev / position / Next / Last. First+Prev disabled on page 1;
+   Next+Last disabled on the last page. Lucide-style inline SVG chevrons.
+   Shared verbatim across Changer / Reprocessor2 / TJ — keep the three identical.
+   Wiring: parent passes Page (1-based), TotalPages, TotalCount; handles OnPageChange. *@
+
+<div class="co-pager" role="navigation" aria-label="Pagination">
+    <button type="button" class="co-pager-btn" disabled="@(Page <= 1)"
+            @onclick="() => Go(1)" aria-label="First page" title="First page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5" /><path d="M18 17l-5-5 5-5" /></svg>
+    </button>
+    <button type="button" class="co-pager-btn" disabled="@(Page <= 1)"
+            @onclick="() => Go(Page - 1)" aria-label="Previous page" title="Previous page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+    </button>
+    <span class="co-pager-pos">@Page of @TotalPages <span class="co-pager-count">(@TotalCount @Noun)</span></span>
+    <button type="button" class="co-pager-btn" disabled="@(Page >= TotalPages)"
+            @onclick="() => Go(Page + 1)" aria-label="Next page" title="Next page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+    </button>
+    <button type="button" class="co-pager-btn" disabled="@(Page >= TotalPages)"
+            @onclick="() => Go(TotalPages)" aria-label="Last page" title="Last page">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 17l5-5-5-5" /><path d="M6 17l5-5-5-5" /></svg>
+    </button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public int Page { get; set; }
+    [Parameter, EditorRequired] public int TotalPages { get; set; }
+    [Parameter, EditorRequired] public int TotalCount { get; set; }
+    /// <summary>Singular noun for the count, e.g. "result", "GTIN". Pluralized with "s".</summary>
+    [Parameter] public string ResultNoun { get; set; } = "result";
+    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+
+    private string Noun => TotalCount == 1 ? ResultNoun : ResultNoun + "s";
+
+    private async Task Go(int target)
+    {
+        var clamped = Math.Clamp(target, 1, Math.Max(1, TotalPages));
+        if (clamped != Page && OnPageChange.HasDelegate)
+            await OnPageChange.InvokeAsync(clamped);
+    }
+}

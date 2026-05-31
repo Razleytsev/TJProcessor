@@ -44,7 +44,24 @@
                     <tr @onclick="() => OnRowClick.InvokeAsync(item)" class="@(GetRowClass(item))">
                         @foreach (var column in Columns)
                         {
-                            <td>@column.Value(item)</td>
+                            @if (CopyableCells)
+                            {
+                                @* A6: right-click → Copy on every data cell. Row stays
+                                   clickable (right-click does not fire @onclick). *@
+                                var __cv = column.Value(item)?.ToString();
+                                @if (!string.IsNullOrEmpty(__cv))
+                                {
+                                    <td class="co-copy-cell" data-co-copy="@__cv">@column.Value(item)</td>
+                                }
+                                else
+                                {
+                                    <td>@column.Value(item)</td>
+                                }
+                            }
+                            else
+                            {
+                                <td>@column.Value(item)</td>
+                            }
                         }
                     </tr>
                 }
@@ -83,6 +100,12 @@
 
     [Parameter]
     public int PageSize { get; set; } = 0;
+
+    // A6: when true, every data cell gets the CalmOps right-click → Copy
+    // affordance (.co-copy-cell + data-co-copy). Opt-in so other consumers
+    // (e.g. Order) are unaffected.
+    [Parameter]
+    public bool CopyableCells { get; set; } = false;
 
     private readonly string _instanceId = Guid.NewGuid().ToString("N").Substring(0, 8);
 

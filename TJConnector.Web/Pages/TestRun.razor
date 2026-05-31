@@ -18,9 +18,9 @@
 
     @if (!isEnabled)
     {
-        <div class="alert alert-warning">
-            <strong>Test Run is disabled</strong> in this environment.
-            Set <code>TestRun.Enabled = true</code> in <code>appsettings.json</code> to enable.
+        <div class="co-alert co-alert-warning">
+            <p><strong>Test Run is disabled</strong> in this environment.
+            Set <code>TestRun.Enabled = true</code> in <code>appsettings.json</code> to enable.</p>
         </div>
     }
     else
@@ -29,117 +29,133 @@
            pattern so the title strip + auto-refresh pill follow one rule.
            B13: move the auto-refresh hint out of the Recent-runs card title
            and into the page-header pill, matching the other pages. *@
-        <div class="page-header" style="padding-left:0;padding-right:0;">
-            <h1 class="page-title mb-0">Production Contour Test Run</h1>
-            <div class="d-flex align-items-center gap-2 ms-auto">
-                <span class="refresh-pill @(runs != null && runs.Any(r => r.Stage >= 0 && r.Stage < 100) ? "is-refreshing" : "")"
+        <div class="co-page-header">
+            <h1>Production Contour Test Run</h1>
+            <div class="co-actions">
+                <span class="co-status @(runs != null && runs.Any(r => r.Stage >= 0 && r.Stage < 100) ? "co-dot-primary" : "co-dot-secondary")"
                       title="Recent-runs auto-refresh every 2 s">
-                    <span class="refresh-dot" aria-hidden="true"></span>
-                    2 s
+                    <span class="co-dot" aria-hidden="true"></span>
+                    Auto-refresh 2 s
                 </span>
             </div>
         </div>
-        <p class="text-muted" style="margin:0 0 1rem;font-size:0.85rem;">
+        <p class="co-muted" style="margin:0 0 1rem;font-size:0.85rem;">
             Drives the full marking-authority chain (pack → bundle → mastercase → application → aggregation) against the
             real external system. Real codes are minted and cannot be reverted.
         </p>
 
-        <div class="info-card">
+        <div class="co-card">
             <div class="row g-2">
                 <div class="col-md-6">
-                    <label class="form-label form-label-sm">Pack GTIN / Product</label>
-                    <select class="form-select form-select-sm" @bind="form.PackProductId">
-                        <option value="0">— select —</option>
-                        @foreach (var p in packProducts)
-                        {
-                            <option value="@p.Id">@p.Gtin — @p.Name</option>
-                        }
-                    </select>
+                    <div class="co-field">
+                        <label>Pack GTIN / Product</label>
+                        <select class="co-select" @bind="form.PackProductId">
+                            <option value="0">— select —</option>
+                            @foreach (var p in packProducts)
+                            {
+                                <option value="@p.Id">@p.Gtin — @p.Name</option>
+                            }
+                        </select>
+                    </div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label form-label-sm">Bundle GTIN / Product</label>
-                    <select class="form-select form-select-sm" @bind="form.BundleProductId">
-                        <option value="0">— select —</option>
-                        @foreach (var p in bundleProducts)
-                        {
-                            <option value="@p.Id">@p.Gtin — @p.Name</option>
-                        }
-                    </select>
+                    <div class="co-field">
+                        <label>Bundle GTIN / Product</label>
+                        <select class="co-select" @bind="form.BundleProductId">
+                            <option value="0">— select —</option>
+                            @foreach (var p in bundleProducts)
+                            {
+                                <option value="@p.Id">@p.Gtin — @p.Name</option>
+                            }
+                        </select>
+                    </div>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label form-label-sm">Packs per bundle</label>
-                    <input type="number" min="1" class="form-control form-control-sm" @bind="form.PacksPerBundle" />
+                    <div class="co-field">
+                        <label>Packs per bundle</label>
+                        <input type="number" min="1" class="co-input" @bind="form.PacksPerBundle" />
+                    </div>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label form-label-sm">Bundles per container</label>
-                    <input type="number" min="1" class="form-control form-control-sm" @bind="form.BundlesPerContainer" />
+                    <div class="co-field">
+                        <label>Bundles per container</label>
+                        <input type="number" min="1" class="co-input" @bind="form.BundlesPerContainer" />
+                    </div>
                 </div>
                 <div class="col-md-6">
-                    <label class="form-label form-label-sm">User</label>
-                    <input class="form-control form-control-sm" @bind="form.User" />
+                    <div class="co-field">
+                        <label>User</label>
+                        <input class="co-input" @bind="form.User" />
+                    </div>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label form-label-sm">Factory</label>
-                    <select class="form-select form-select-sm" @bind="factoryId" disabled="@(factories.Count() <= 1)">
-                        <option value="0">— select —</option>
-                        @foreach (var f in factories)
-                        {
-                            <option value="@f.Id">@f.Name</option>
-                        }
-                    </select>
+                    <div class="co-field">
+                        <label>Factory</label>
+                        <select class="co-select" @bind="factoryId" disabled="@(factories.Count() <= 1)">
+                            <option value="0">— select —</option>
+                            @foreach (var f in factories)
+                            {
+                                <option value="@f.Id">@f.Name</option>
+                            }
+                        </select>
+                    </div>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label form-label-sm">Marking line</label>
-                    <select class="form-select form-select-sm" @bind="markingLineId" disabled="@(markingLines.Count() <= 1)">
-                        <option value="0">— select —</option>
-                        @foreach (var m in markingLines)
-                        {
-                            <option value="@m.Id">@m.Name</option>
-                        }
-                    </select>
+                    <div class="co-field">
+                        <label>Marking line</label>
+                        <select class="co-select" @bind="markingLineId" disabled="@(markingLines.Count() <= 1)">
+                            <option value="0">— select —</option>
+                            @foreach (var m in markingLines)
+                            {
+                                <option value="@m.Id">@m.Name</option>
+                            }
+                        </select>
+                    </div>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label form-label-sm">Location</label>
-                    <select class="form-select form-select-sm" @bind="locationId" disabled="@(locations.Count() <= 1)">
-                        <option value="0">— select —</option>
-                        @foreach (var l in locations)
-                        {
-                            <option value="@l.Id">@l.Name</option>
-                        }
-                    </select>
+                    <div class="co-field">
+                        <label>Location</label>
+                        <select class="co-select" @bind="locationId" disabled="@(locations.Count() <= 1)">
+                            <option value="0">— select —</option>
+                            @foreach (var l in locations)
+                            {
+                                <option value="@l.Id">@l.Name</option>
+                            }
+                        </select>
+                    </div>
                 </div>
             </div>
             <div class="d-flex align-items-center gap-3" style="margin-top:12px;">
-                <label>
+                <label class="co-checkbox">
                     <input type="checkbox" @bind="confirmSwitch" />
                     I understand this mints real codes on the marking authority and cannot be reverted.
                 </label>
-                <button class="btn btn-sm btn-primary ms-auto"
+                <button class="co-btn co-btn-primary ms-auto"
                         disabled="@(!CanStart())"
                         @onclick="StartRun">
-                    ▶ Start Test Run
+                    Start Test Run
                 </button>
             </div>
             @if (!string.IsNullOrEmpty(startError))
             {
-                <div class="text-danger text-xs" style="margin-top:6px;">@startError</div>
+                <div class="co-alert co-alert-error" style="margin-top:8px;"><p>@startError</p></div>
             }
         </div>
 
-        <div class="info-card" style="margin-top:16px;">
-            <h6 style="margin:0 0 0.85rem;font-size:0.85rem;font-weight:600;">Recent runs</h6>
+        <div class="co-card" style="margin-top:16px;">
+            <div class="co-section-header"><h2>Recent runs</h2></div>
             @if (runs == null)
             {
-                <div class="loading-state">Loading…</div>
+                <div class="co-state"><p class="co-state-title">Loading…</p></div>
             }
             else if (runs.Count == 0)
             {
-                <div class="empty-state">No runs yet.</div>
+                <div class="co-state"><p class="co-state-title">No runs yet.</p></div>
             }
             else
             {
-                <table class="table table-sm table-xs-font">
-                    <thead class="table-light">
+                <table class="co-table">
+                    <thead>
                         <tr>
                             <th>ID</th>
                             <th>Pack GTIN</th>
@@ -154,25 +170,29 @@
                     <tbody>
                         @foreach (var r in runs)
                         {
-                            <tr style="cursor:pointer;" @onclick="() => ToggleExpand(r.Id)">
-                                <td>@r.Id @if (r.ClonedFromTestRunId.HasValue)
-                                    { <span class="text-xs text-muted">(from #@r.ClonedFromTestRunId @@ @r.ClonedFromStage)</span> }</td>
-                                <td>@r.PackGtin</td>
-                                <td>@r.BundleGtin</td>
+                            <tr class="co-row-clickable" @onclick="() => ToggleExpand(r.Id)">
+                                <td class="co-mono">@r.Id @if (r.ClonedFromTestRunId.HasValue)
+                                    { <span class="co-faint">(from #@r.ClonedFromTestRunId @@ @r.ClonedFromStage)</span> }</td>
+                                <td class="co-mono">@r.PackGtin</td>
+                                <td class="co-mono">@r.BundleGtin</td>
                                 <td>@r.PacksPerBundle × @r.BundlesPerContainer</td>
                                 <td>@r.User</td>
-                                <td><span class="badge @StageBadgeClass(r.Stage)">@r.StageLabel</span></td>
+                                <td>
+                                    <span class="co-status @StageDotClass(r.Stage)">
+                                        <span class="co-dot"></span>@r.StageLabel
+                                    </span>
+                                </td>
                                 <td>@r.RecordDate.ToLocalTime().ToString("dd.MM.yy HH:mm")</td>
                                 <td>
                                     @if (r.Stage < 0 && r.Stage != -99)
                                     {
-                                        <button class="btn btn-xs btn-outline-warning"
+                                        <button class="co-btn co-btn-default co-btn-sm"
                                                 @onclick:stopPropagation="true"
-                                                @onclick="() => Reprocess(r.Id, -r.Stage)">↻ Reprocess from stage @(-r.Stage)</button>
+                                                @onclick="() => Reprocess(r.Id, -r.Stage)">Reprocess from stage @(-r.Stage)</button>
                                     }
                                     @if (r.Stage >= 0 && r.Stage < 100)
                                     {
-                                        <button class="btn btn-xs btn-outline-danger"
+                                        <button class="co-btn co-btn-danger co-btn-sm"
                                                 @onclick:stopPropagation="true"
                                                 @onclick="() => Cancel(r.Id)">Cancel</button>
                                     }
@@ -180,28 +200,28 @@
                             </tr>
                             @if (expandedId == r.Id)
                             {
-                                <tr>
-                                    <td colspan="8" style="background:#fafafa;">
-                                        <div style="padding:8px 16px;">
+                                <tr class="co-detail-row">
+                                    <td colspan="8">
+                                        <div>
                                             @if (!string.IsNullOrEmpty(r.StatusMessage))
                                             {
-                                                <div class="text-xs" style="margin-bottom:6px;"><strong>Message:</strong> @r.StatusMessage</div>
+                                                <div style="margin-bottom:6px;font-size:0.8rem;"><strong>Message:</strong> @r.StatusMessage</div>
                                             }
                                             @if (r.MastercaseSscc != null)
                                             {
-                                                <div class="text-xs"><strong>Mastercase SSCC:</strong> <code>@r.MastercaseSscc</code></div>
+                                                <div style="font-size:0.8rem;"><strong>Mastercase SSCC:</strong> <span class="co-mono">@r.MastercaseSscc</span></div>
                                             }
                                             @if (r.ApplicationGuid.HasValue)
                                             {
-                                                <div class="text-xs"><strong>Application:</strong> <code>@r.ApplicationGuid</code></div>
+                                                <div style="font-size:0.8rem;"><strong>Application:</strong> <span class="co-mono">@r.ApplicationGuid</span></div>
                                             }
                                             @if (r.AggregationGuid.HasValue)
                                             {
-                                                <div class="text-xs"><strong>Aggregation:</strong> <code>@r.AggregationGuid</code></div>
+                                                <div style="font-size:0.8rem;"><strong>Aggregation:</strong> <span class="co-mono">@r.AggregationGuid</span></div>
                                             }
                                             <div style="margin-top:8px;">
-                                                <strong>Phase log:</strong>
-                                                <table class="table table-xs-font" style="margin-top:4px;">
+                                                <div class="co-eyebrow" style="margin-bottom:4px;">Phase log</div>
+                                                <table class="co-table co-table-nested">
                                                     <thead>
                                                         <tr>
                                                             <th>Stage</th>
@@ -218,14 +238,18 @@
                                                             <tr>
                                                                 <td>@p.Stage</td>
                                                                 <td>@p.PhaseName</td>
-                                                                <td><span class="@OutcomeClass(p.Outcome)">@p.Outcome</span></td>
+                                                                <td>
+                                                                    <span class="co-status @OutcomeDotClass(p.Outcome)">
+                                                                        <span class="co-dot"></span>@p.Outcome
+                                                                    </span>
+                                                                </td>
                                                                 <td>@p.StartedAt.ToLocalTime().ToString("HH:mm:ss")</td>
                                                                 <td>@DurationLabel(p)</td>
                                                                 <td>
                                                                     @if (p.ExternalRequestJson != null || p.ExternalResponseJson != null)
                                                                     {
                                                                         var key = $"{r.Id}-{p.Stage}-{p.PhaseName}-{p.StartedAt.Ticks}";
-                                                                        <button class="btn btn-xs btn-outline-secondary"
+                                                                        <button class="co-btn co-btn-ghost co-btn-sm"
                                                                                 @onclick="() => ToggleJson(key)">
                                                                             @(expandedJson == key ? "hide" : "show") JSON
                                                                         </button>
@@ -233,13 +257,13 @@
                                                                         {
                                                                             @if (p.ExternalRequestJson != null)
                                                                             {
-                                                                                <div class="text-xs" style="margin-top:4px;"><strong>req:</strong></div>
-                                                                                <pre style="font-size:10px;white-space:pre-wrap;">@p.ExternalRequestJson</pre>
+                                                                                <div style="margin-top:4px;font-size:0.8rem;"><strong>req:</strong></div>
+                                                                                <pre class="co-codeblock">@p.ExternalRequestJson</pre>
                                                                             }
                                                                             @if (p.ExternalResponseJson != null)
                                                                             {
-                                                                                <div class="text-xs"><strong>resp:</strong></div>
-                                                                                <pre style="font-size:10px;white-space:pre-wrap;">@p.ExternalResponseJson</pre>
+                                                                                <div style="font-size:0.8rem;"><strong>resp:</strong></div>
+                                                                                <pre class="co-codeblock">@p.ExternalResponseJson</pre>
                                                                             }
                                                                         }
                                                                     }
@@ -260,23 +284,25 @@
         </div>
 
         <!-- ── External DB Test ────────────────────────────────── -->
-        <div class="info-card" style="margin-top:16px;">
-            <h6 style="margin:0 0 0.85rem;font-size:0.85rem;font-weight:600;text-transform:none;letter-spacing:0;color:var(--text-strong);">External Database Connection Test</h6>
-            <div class="text-xs text-muted" style="margin-bottom:8px;">
+        <div class="co-card" style="margin-top:16px;">
+            <div class="co-section-header"><h2>External Database Connection Test</h2></div>
+            <div class="co-muted" style="margin-bottom:8px;font-size:0.8rem;">
                 Test SQL Server connection by querying container hierarchy. The MC number does not need to be valid for this market — the query will execute and return whatever the external DB has (or an error if the connection fails).
             </div>
             <div class="row g-2">
                 <div class="col-md-6">
-                    <label class="form-label form-label-sm">Mastercase Number</label>
-                    <input class="form-control form-control-sm" placeholder="Enter MC number…" @bind="dbTestMcNumber" />
+                    <div class="co-field">
+                        <label>Mastercase Number</label>
+                        <input class="co-input" placeholder="Enter MC number…" @bind="dbTestMcNumber" />
+                    </div>
                 </div>
                 <div class="col-md-6 d-flex align-items-end gap-2">
-                    <button class="btn btn-sm btn-outline-primary"
+                    <button class="co-btn co-btn-default"
                             disabled="@(string.IsNullOrWhiteSpace(dbTestMcNumber) || dbTestRunning)"
                             @onclick="RunDbTestContent">
                         @(dbTestRunning ? "Testing…" : "Test Content Query")
                     </button>
-                    <button class="btn btn-sm btn-outline-primary"
+                    <button class="co-btn co-btn-default"
                             disabled="@(string.IsNullOrWhiteSpace(dbTestMcNumber) || dbTestRunning)"
                             @onclick="RunDbTestInfo">
                         @(dbTestRunning ? "Testing…" : "Test Info Query")
@@ -285,16 +311,18 @@
             </div>
             @if (dbTestResult != null)
             {
-                <div class="mt-2" style="font-size:11px;">
+                <div class="mt-2">
                     <div class="d-flex align-items-center gap-2 mb-1">
-                        <strong>@dbTestLabel</strong>
-                        <span class="badge @(dbTestSuccess ? "bg-success" : "bg-danger")">@(dbTestSuccess ? "OK" : "FAIL")</span>
+                        <strong style="font-size:0.82rem;">@dbTestLabel</strong>
+                        <span class="co-status @(dbTestSuccess ? "co-dot-success" : "co-dot-danger")">
+                            <span class="co-dot"></span>@(dbTestSuccess ? "OK" : "Failed")
+                        </span>
                         @if (dbTestDurationMs.HasValue)
                         {
-                            <span class="text-muted">@(dbTestDurationMs)ms</span>
+                            <span class="co-muted co-tnum" style="font-size:0.78rem;">@(dbTestDurationMs)ms</span>
                         }
                     </div>
-                    <pre style="font-size:10px;white-space:pre-wrap;max-height:300px;overflow-y:auto;background:#fff;padding:8px;border:1px solid #dee2e6;border-radius:4px;">@dbTestResult</pre>
+                    <pre class="co-codeblock" style="max-height:300px;">@dbTestResult</pre>
                 </div>
             }
         </div>
@@ -443,6 +471,23 @@
         "FAIL" => "badge bg-danger",
         _ => "badge bg-secondary"
     };
+
+    // CalmOps status tone (dot colour) — the dot carries the colour, label stays slate.
+    private static string OutcomeDotClass(string outcome) => outcome switch
+    {
+        "OK" => "co-dot-success",
+        "FAIL" => "co-dot-danger",
+        _ => "co-dot-secondary"
+    };
+
+    private static string StageDotClass(int stage)
+    {
+        if (stage == 100) return "co-dot-success";   // Completed
+        if (stage == -99) return "co-dot-secondary"; // Canceled
+        if (stage < 0)    return "co-dot-danger";    // Failed at stage
+        if (stage == 0)   return "co-dot-info";      // Created / queued
+        return "co-dot-primary";                     // Running
+    }
 
     // if/else (not a switch with relational patterns) — Razor parser in older
     // SDKs chokes on `< 0` inside @code blocks.

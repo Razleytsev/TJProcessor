@@ -47,6 +47,7 @@
     --sidebar-text: #cbd5e1;
     --sidebar-text-strong: #f1f5f9;
     --sidebar-text-faint: #6b7280;
+    --sidebar-active-bar: #2563eb;
 
     /* Status badges — Changer palette (soft fill + tinted border) */
     --st-info-bg:     #eff4ff;   --st-info-fg:     #1d4ed8;   --st-info-bd:     #dbe5fb;
@@ -523,6 +524,10 @@ textarea:focus-visible,
 }
 .split-pane-divider:hover,
 .split-pane-divider:active { background: var(--accent-soft); }
+/* While nothing is selected the divider stays (reserving space, no jerk) but is
+   non-interactive and visually quiet. */
+.split-pane-divider.is-inert { cursor: default; pointer-events: none; }
+.split-pane-divider.is-inert .divider-grip { opacity: 0.35; }
 .divider-grip {
     width: 36px;
     height: 4px;
@@ -999,56 +1004,11 @@ textarea:focus-visible,
 }
 
 /* ============================================================
-   Toasts (Changer bottom-right pattern)
+   Toasts — UNIFIED on the CalmOps .co-toast primitive.
+   The .toast-container host + .co-toast stacking/dismiss rules now live in the
+   shared calmops/components.css (single source of truth across all 3 apps), so
+   the per-app block was removed here to prevent drift.
    ============================================================ */
-.toast-container {
-    position: fixed;
-    bottom: 1.5rem;
-    right: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    z-index: 9999;
-}
-.toast {
-    padding: 0.6rem 0.85rem 0.6rem 1rem;
-    border-radius: var(--radius-sm);
-    font-size: 0.85rem;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.08);
-    border: 1px solid transparent;
-    animation: toast-slide-in 0.18s ease-out;
-    max-width: 360px;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-}
-.toast-msg { flex: 1; min-width: 0; }
-.toast-close {
-    background: none;
-    border: none;
-    font-size: 1rem;
-    line-height: 1;
-    color: inherit;
-    opacity: 0.6;
-    padding: 0 4px;
-    cursor: pointer;
-    border-radius: var(--radius-xs);
-}
-.toast-close:hover { opacity: 1; background: rgba(0,0,0,0.06); }
-.toast-success {
-    background: #ecfdf5;
-    color: #15803d;
-    border-color: #c6f0d5;
-}
-.toast-error {
-    background: #fef2f2;
-    color: #b42318;
-    border-color: #fbd1d4;
-}
-@keyframes toast-slide-in {
-    from { transform: translateY(8px); opacity: 0; }
-    to   { transform: translateY(0); opacity: 1; }
-}
 
 /* ============================================================
    Dropdowns (GTIN autocomplete + multi-select)
@@ -1594,7 +1554,15 @@ code {
     border-color: var(--accent);
 }
 
-/* Not-found page */
+/* Branding: login + 404 brand lockup (A4) */
+.brand-lockup-light {
+    display: block;
+    height: 40px;
+    width: auto;
+    margin: 0 auto 1.25rem;
+}
+
+/* Not-found page (A3) */
 .not-found-page {
     display: flex;
     flex-direction: column;
@@ -1602,29 +1570,40 @@ code {
     justify-content: center;
     text-align: center;
     padding: 3rem 1.5rem;
-    min-height: 60vh;
+    min-height: 70vh;
+    background: var(--bg-app, #f7f8fa);
     color: var(--text);
+}
+.not-found-card {
+    background: var(--bg-surface, #fff);
+    border: 1px solid var(--border, #e2e6ec);
+    border-radius: var(--radius, 8px);
+    box-shadow: var(--shadow-2, 0 4px 10px rgba(15, 23, 42, 0.06));
+    padding: 2.5rem 2.75rem;
+    max-width: 460px;
+    width: 100%;
 }
 .not-found-code {
     font-family: "JetBrains Mono", monospace;
-    font-size: 3.5rem;
+    font-size: 3rem;
     font-weight: 600;
-    color: var(--text-muted);
+    color: var(--text-faint, #94a3b8);
     letter-spacing: -0.02em;
-    margin-bottom: 0.4rem;
+    margin: 0.25rem 0 0.4rem;
 }
 .not-found-title {
-    font-size: 1.4rem;
+    font-size: 1.35rem;
     font-weight: 600;
     color: var(--text-strong);
-    margin: 0.5rem 0 0.4rem;
+    margin: 0 0 0.5rem;
     letter-spacing: -0.01em;
 }
 .not-found-body {
     color: var(--text-muted);
-    max-width: 440px;
-    margin: 0 auto 1.2rem;
+    max-width: 360px;
+    margin: 0 auto 1.5rem;
     font-size: 0.9rem;
+    line-height: 1.5;
 }
 
 /* Blazor error banner — restyled */

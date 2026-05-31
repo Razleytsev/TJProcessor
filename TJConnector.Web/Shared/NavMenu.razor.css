@@ -18,14 +18,21 @@
 .sidebar .brand,
 .sidebar .navbar-brand {
     display: block;
-    padding: 1.15rem 1.25rem;
+    padding: 1.05rem 1.1rem;
     font-size: 1.05rem;
+    line-height: 1.2;
     font-weight: 600;
     border-bottom: 1px solid var(--sidebar-border);
     color: var(--sidebar-text-strong);
     letter-spacing: -0.01em;
     text-decoration: none;
     transition: background 0.12s ease;
+}
+
+.sidebar .brand .brand-lockup {
+    display: block;
+    height: 28px;
+    width: auto;
 }
 
 .sidebar a.brand:hover,
@@ -39,6 +46,10 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
+    /* Nav takes the free vertical space and scrolls on overflow so the
+       foot (user + version) stays pinned to the bottom of the fixed rail. */
+    flex: 1;
+    overflow-y: auto;
 }
 
 .sidebar .nav-link,
@@ -48,6 +59,7 @@
     color: var(--sidebar-text);
     text-decoration: none;
     font-size: 0.875rem;
+    line-height: 1.2;
     border-radius: 6px;
     transition: background 0.12s ease, color 0.12s ease;
 }
@@ -60,28 +72,93 @@
 
 .sidebar .nav-link.active,
 .sidebar ::deep .nav-link.active {
-    background-color: rgba(59, 130, 246, 0.14);
+    /* Single canonical accent #2563eb — soft tint fill + 3px inset accent bar,
+       unified with Changer's active-nav treatment. */
+    background-color: rgba(37, 99, 235, 0.14);
     color: var(--sidebar-text-strong);
     font-weight: 500;
-    box-shadow: inset 3px 0 0 #3b82f6;
+    box-shadow: inset 3px 0 0 var(--sidebar-active-bar, #2563eb);
 }
 
-/* Footer with version tag */
+/* Sidebar foot — current user (avatar + name + Logout), pinned to the
+   bottom of the fixed rail. Calm Ops .co-sidebar-foot pattern. margin-top
+   moved here so the foot pushes to the bottom while .nav-scrollable flexes. */
 .nav-footer {
     margin-top: auto;
-    padding: 0.85rem 1.25rem;
+    flex-shrink: 0;
     border-top: 1px solid var(--sidebar-border);
-    font-size: 0.78rem;
-    color: var(--sidebar-text-faint);
+    padding: 0.7rem 0.85rem;
+    /* Column: contour tag (.co-env-tag) sits on its own row ABOVE the
+       version + user + Logout row (.nav-footer-row). */
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
 }
 
-.version-tag {
+/* The original horizontal foot row (version + avatar + name + Logout). */
+.nav-footer-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.nav-footer .user-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    background: rgba(148, 163, 184, 0.18);
+    color: var(--sidebar-text-strong);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.nav-footer .user-name {
+    color: var(--sidebar-text-strong);
+    font-size: 0.82rem;
+    line-height: 1.2;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar .logout-link {
+    margin-left: auto;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
     color: var(--sidebar-text-faint);
+    text-decoration: none;
+    font: inherit;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    padding: 0.25rem 0.4rem;
+    border: 0;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: color 0.12s ease, background 0.12s ease;
+}
+
+.sidebar .logout-link:hover {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.08);
+}
+
+/* Version tag — sits inside the nav-footer row as its first child. */
+.nav-footer .version-tag {
+    color: var(--sidebar-text-faint);
+    font-size: 0.72rem;
+    line-height: 1.2;
     font-variant-numeric: tabular-nums;
     letter-spacing: 0.02em;
+    flex-shrink: 0;
 }
 
 /* Mobile collapse toggle (preserved for narrow screens) */
