@@ -204,7 +204,18 @@
                 }
                 else
                 {
-                    <table class="co-table table table-sm table-xs-font table-hover mb-0">
+                    @* SR1 (R7): table-layout:fixed + colgroup so the Submission Requests
+                       columns stop drifting across pages. ID pinned to ~3-digit width. *@
+                    <table class="co-table co-table-fixed co-table-reqs table table-sm table-xs-font table-hover mb-0">
+                        <colgroup>
+                            <col class="cg-id" />
+                            <col class="cg-file" />
+                            <col class="cg-user" />
+                            <col class="cg-num" />
+                            <col class="cg-num" />
+                            <col class="cg-status" />
+                            <col class="cg-date" />
+                        </colgroup>
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th class="col-id">ID</th>
@@ -238,7 +249,7 @@
                         @* A1: unified CalmOps pager |‹ ‹ n of m (x requests) › ›|. *@
                         <div class="co-pager-footer">
                             <CoPager Page="reqPage" TotalPages="ReqTotalPages"
-                                     TotalCount="@(requests?.Count() ?? 0)" ResultNoun="request"
+                                     TotalCount="@(requests?.Count() ?? 0)" PageSize="ReqPageSize"
                                      OnPageChange="@(p => reqPage = p)" />
                         </div>
                     }
@@ -304,7 +315,19 @@
                 }
                 else
                 {
-                    <table class="co-table table table-sm table-xs-font mb-0">
+                    @* SR1/SR2 (R7): fixed layout + colgroup. The last column reserves a
+                       fixed width for the optional Retry button so present-vs-absent never
+                       widens columns; the button height is constrained in CSS so rows keep
+                       a constant height too. *@
+                    <table class="co-table co-table-fixed co-table-pkgs table table-sm table-xs-font mb-0">
+                        <colgroup>
+                            <col class="cg-id" />
+                            <col class="cg-code" />
+                            <col class="cg-sscc" />
+                            <col class="cg-status" />
+                            <col class="cg-date" />
+                            <col class="cg-retry" />
+                        </colgroup>
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th>ID</th>
@@ -350,7 +373,7 @@
                         @* A1: unified CalmOps pager |‹ ‹ n of m (x packages) › ›|. *@
                         <div class="co-pager-footer">
                             <CoPager Page="pkgPage" TotalPages="PkgTotalPages"
-                                     TotalCount="@(selectedDetail.Packages?.Count ?? 0)" ResultNoun="package"
+                                     TotalCount="@(selectedDetail.Packages?.Count ?? 0)" PageSize="PkgPageSize"
                                      OnPageChange="@(p => pkgPage = p)" />
                         </div>
                     }
@@ -396,7 +419,9 @@
     private int refreshInterval = 5;
 
     // ── Split pane ────────────────────────────────────────────────────────
-    private double topPct = 40;
+    // R5 T-panes: raised default 40→52 so the requests master list isn't cramped
+    // now that the wrapper fills the full viewport height. Drag still overrides.
+    private double topPct = 52;
     private DotNetObjectReference<Containers>? _selfRef;
 
     // ── Submit modal ──────────────────────────────────────────────────────

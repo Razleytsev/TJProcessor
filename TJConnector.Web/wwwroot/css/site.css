@@ -42,12 +42,12 @@
     --accent-ring: rgba(37, 99, 235, 0.18);
 
     /* Sidebar ----------------------------------------------- */
-    --sidebar-bg: #111827;
-    --sidebar-border: #1f2937;
+    --sidebar-bg: #2c1a12;      /* R8: calm deep umber, rhymes with the #b6522d logo */
+    --sidebar-border: #43271a;
     --sidebar-text: #cbd5e1;
     --sidebar-text-strong: #f1f5f9;
     --sidebar-text-faint: #6b7280;
-    --sidebar-active-bar: #2563eb;
+    --sidebar-active-bar: #c2663f;
 
     /* Status badges — Changer palette (soft fill + tinted border) */
     --st-info-bg:     #eff4ff;   --st-info-fg:     #1d4ed8;   --st-info-bd:     #dbe5fb;
@@ -481,8 +481,12 @@ textarea:focus-visible,
     display: flex;
     flex-direction: column;
     width: 100%;
-    flex: 1 1 auto;
+    /* R5 T-panes: flex:1 1 0 + height:100% so this root claims the FULL height
+       of .content-area (not just content height), letting the header sit at the
+       top and the split-pane-wrapper take ALL remaining space — no bottom gap. */
+    flex: 1 1 0;
     min-height: 0;
+    height: 100%;
     overflow: hidden;
     background: var(--bg-app);
     box-sizing: border-box;
@@ -494,9 +498,15 @@ textarea:focus-visible,
     flex-direction: column;
     overflow: hidden;
     width: 100%;
+    /* R5 T-panes: fill the FULL height handed down by .page-root-flex /
+       .content-area (no outer scroll; panes scroll internally). height:100%
+       backs up flex:1 so the wrapper always claims the whole column. */
     flex: 1 1 0;
     min-height: 0;
-    padding: 0 1.25rem 1.25rem;
+    height: 100%;
+    /* R5: trimmed the 1.25rem bottom padding to 0.6rem so there is no dead
+       band under the bottom pane while still keeping it off the viewport edge. */
+    padding: 0 1.25rem 0.6rem;
     gap: 0.75rem;
     box-sizing: border-box;
 }
@@ -701,6 +711,32 @@ textarea:focus-visible,
     top: 0;
     z-index: 2;
     background: var(--bg-surface);
+}
+
+/* R6 D4: freeze the first column on the FLAT list tables inside a pane-scroll
+   (Order Batches list + items pane; Submission Requests list + packages pane) so
+   the identifier column stays visible during horizontal scroll. Scoped to the
+   pane's direct-child top-level table and explicitly NOT the .co-table-nested
+   tables (which live in detail panels and whose first column is nested content).
+   The header corner sits above the sticky-thead layer (z-index 2); the sticky
+   first cell carries an opaque background in every row state. */
+.pane-scroll > table.co-table:not(.co-table-nested) th:first-child,
+.pane-scroll > table.co-table:not(.co-table-nested) td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bg-surface);
+}
+.pane-scroll > table.co-table:not(.co-table-nested) thead th:first-child { z-index: 3; }
+.pane-scroll > table.co-table:not(.co-table-nested) tbody tr:hover > td:first-child {
+    background: var(--bg-surface-alt);
+}
+.pane-scroll > table.co-table:not(.co-table-nested) tbody tr.co-row-clickable:hover > td:first-child {
+    background: var(--accent-soft);
+}
+.pane-scroll > table.co-table:not(.co-table-nested) tbody tr.highlighted-row > td:first-child,
+.pane-scroll > table.co-table:not(.co-table-nested) tbody tr.co-row-active > td:first-child {
+    background: var(--bg-selected);
 }
 
 /* Row warn — soft red with left bar (Changer pattern). */
@@ -1454,14 +1490,6 @@ textarea:focus-visible,
     width: 360px;
     box-sizing: border-box;
 }
-.login-box h2 {
-    margin: 0 0 1.5rem;
-    text-align: center;
-    color: var(--text-strong);
-    font-size: 1.35rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-}
 
 /* ============================================================
    Utility tweaks
@@ -1559,7 +1587,8 @@ code {
     display: block;
     height: 40px;
     width: auto;
-    margin: 0 auto 1.25rem;
+    max-width: 240px;
+    margin: 0 auto 1.5rem;
 }
 
 /* Not-found page (A3) */
@@ -1605,6 +1634,160 @@ code {
     font-size: 0.9rem;
     line-height: 1.5;
 }
+
+/* ============================================================
+   R7 — TJ fixes: fixed table layouts (TB1/TB3/SR1/SR2), Products
+   internal scroll (PR1), Order-Code modal spinner + read-only field
+   (OC1/OC2). Additive; appended last so it wins where it overlaps.
+   ============================================================ */
+
+/* TB3 / SR1: lock the table layout so column widths come ONLY from the
+   <colgroup> (and header cells), never from cell content — so 1-digit vs
+   2-digit ids, long descriptions, etc. across pages cannot shift columns.
+   `min-width` keeps the table from collapsing inside the horizontally-
+   scrollable pane; the pane (.pane-scroll) supplies the x-scroll when narrow. */
+.co-table-fixed {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 720px;
+}
+/* Fixed-layout cells must clip + ellipsize rather than push their column wider. */
+.co-table-fixed th,
+.co-table-fixed td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+/* Under fixed layout the <colgroup> is the single source of column width — so
+   neutralise the legacy percentage widths the .col-* helper classes put on the
+   header cells (a first-row cell width would otherwise override the <col>). */
+.co-table-fixed th.col-id,
+.co-table-fixed th.col-type,
+.co-table-fixed th.col-gtin,
+.co-table-fixed th.col-num,
+.co-table-fixed th.col-user,
+.co-table-fixed th.col-date,
+.co-table-fixed th.col-status,
+.co-table-fixed th.col-actions { width: auto; }
+
+/* ── Batches list colgroup (TB1: ID ~3 digits) ───────────────────────────── */
+.co-table-fixed col.cg-id     { width: 56px; }   /* TB1: fits ~3 digits + padding */
+.co-table-fixed col.cg-type   { width: 84px; }
+.co-table-fixed col.cg-gtin   { width: 160px; }   /* R7: full 14-digit GTIN */
+.co-table-fixed col.cg-num    { width: 78px; }
+.co-table-fixed col.cg-desc   { width: auto; }   /* the flexible remainder */
+.co-table-fixed col.cg-user   { width: 110px; }
+.co-table-fixed col.cg-date   { width: 155px; }   /* R7: full date + time */
+.co-table-fixed col.cg-status { width: 120px; }
+.co-table-fixed col.cg-actions{ width: 112px; }  /* R8: fits the "Download" button (Description remainder shrinks) */
+
+/* ── Batch-orders table colgroup (TB1: same fixed ID; GUID + message) ────── */
+.co-table-orders col.cg-id    { width: 56px; }
+.co-table-orders col.cg-guid  { width: 340px; }   /* R8: full external GUID (still clipped at 300) */
+.co-table-orders col.cg-num   { width: 118px; }  /* R8: "Requested" / "Downloaded" headers fit */
+.co-table-orders col.cg-status{ width: 120px; }
+.co-table-orders col.cg-date  { width: 155px; }   /* R7: full date + time */
+.co-table-orders col.cg-msg   { width: auto; }
+.co-table-orders { min-width: 820px; }
+
+/* ── Submission Requests list colgroup (SR1) ─────────────────────────────── */
+.co-table-reqs col.cg-id     { width: 56px; }
+.co-table-reqs col.cg-file   { width: auto; }
+.co-table-reqs col.cg-user   { width: 120px; }
+.co-table-reqs col.cg-num    { width: 90px; }
+.co-table-reqs col.cg-status { width: 130px; }
+.co-table-reqs col.cg-date   { width: 155px; }   /* R7: full date + time */
+
+/* ── Packages table colgroup (SR1 + SR2 retry reservation) ───────────────── */
+.co-table-pkgs col.cg-id     { width: 64px; }
+.co-table-pkgs col.cg-code   { width: auto; }
+.co-table-pkgs col.cg-sscc   { width: 200px; }
+.co-table-pkgs col.cg-status { width: 150px; }
+.co-table-pkgs col.cg-date   { width: 155px; }   /* R7: full date + time */
+/* SR2: ALWAYS reserve the Retry column so present-vs-absent never reflows. */
+.co-table-pkgs col.cg-retry  { width: 84px; }
+.co-table-pkgs { min-width: 760px; }
+
+/* SR2: constrain the Retry button so its presence never grows the row height.
+   The action cell keeps a fixed line box; the button sits compact inside it. */
+.co-table-pkgs td.cell-actions {
+    text-align: right;
+    overflow: visible;
+}
+.co-table-pkgs td.cell-actions .co-btn {
+    height: 24px;
+    line-height: 1;
+    padding-top: 0;
+    padding-bottom: 0;
+    white-space: nowrap;
+}
+
+/* Code / SSCC cells in fixed packages table: keep the cell from forcing width
+   (override the inline max-width hints which under fixed-layout are moot but
+   keep them tidy). The mono ellipsis is handled by the .co-table-fixed rule. */
+.co-table-pkgs td.cell-guid { max-width: none; }
+
+/* OC2: strip the number-input spinner arrows on CODES COUNT (orders are ~10k,
+   the steppers are useless) while keeping the numeric value fully editable. */
+.co-no-spinner {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+.co-no-spinner::-webkit-outer-spin-button,
+.co-no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+/* OC1: the auto-selected single Factory / Marking-Line now renders as a clean
+   read-only field (replacing the disabled native <select> whose dropped
+   appearance:none let the browser paint stray caret chrome). Style it so it
+   reads as a settled, non-editable value — no select caret, calm surface. */
+.co-readonly-field {
+    background: var(--bg-surface-alt);
+    color: var(--text-strong);
+    cursor: default;
+}
+.co-readonly-field:focus,
+.co-readonly-field:focus-visible {
+    outline: none;
+    border-color: var(--border);
+    box-shadow: none;
+}
+
+/* PR1: Products — the TABLE scrolls internally (sticky header) instead of the
+   whole PAGE. The page sits in .content-area (the app's scroll surface); for
+   Products we make .container fill the remaining height without overflowing,
+   and the CustomTable's .table-wrapper becomes the internal y-scroller. */
+.container.products-page {
+    height: auto;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;        /* PR1: no page-level scroll for this page */
+}
+.co-table-scroll {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+.co-table-scroll .table-wrapper {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+/* Sticky header for the internally-scrolling Products table. */
+.co-table-scroll .table-wrapper > table > thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--bg-surface);
+}
+/* Keep the pagination bar pinned below the scroll area (it already renders
+   after .table-wrapper; flex-column keeps it out of the scroll region). */
+.co-table-scroll .pagination-bar { flex-shrink: 0; }
 
 /* Blazor error banner — restyled */
 .blazor-error-boundary {

@@ -1,44 +1,86 @@
-@* CoPager — the unified CalmOps pagination control (A1).
-   Layout:  |‹  ‹   n of m (x results)   ›  ›|
-   First / Prev / position / Next / Last. First+Prev disabled on page 1;
+@* CoPager — the unified CalmOps pagination control (A1 / R4 / R5 / R6).
+   Layout (space-between, Carbon footer model):
+     LEFT:  [size ▾]   (only when resizable)
+     RIGHT: start–end of total   ‹‹ ‹ Page n of m › ››
+   The count readout is an item RANGE "@RangeStart–@RangeEnd of @TotalCount"
+   (en-dash, the word "of"); empty table → "0 of 0". NO parentheses.
+   The size <select class="co-pager-size"> renders ONLY when OnPageSizeChange.HasDelegate
+   (resizable tables); fixed-size tables have an empty left cluster so the right
+   group sits right-aligned (Material style). First+Prev disabled on page 1;
    Next+Last disabled on the last page. Lucide-style inline SVG chevrons.
    Shared verbatim across Changer / Reprocessor2 / TJ — keep the three identical.
-   Wiring: parent passes Page (1-based), TotalPages, TotalCount; handles OnPageChange. *@
+   Wiring: parent passes Page (1-based), TotalPages, TotalCount, PageSize;
+   handles OnPageChange (+ OnPageSizeChange where resizable). *@
 
+@* G1 (R7, revised): hide the pager on single-page tables ONLY when the page size is
+   FIXED. For resizable tables keep it even on one page so the size selector stays
+   reachable — otherwise a large size that fits everything on one page would hide the
+   control and strand the user with no way to switch back. *@
+@if (TotalPages > 1 || OnPageSizeChange.HasDelegate)
+{
 <div class="co-pager" role="navigation" aria-label="Pagination">
-    <button type="button" class="co-pager-btn" disabled="@(Page <= 1)"
-            @onclick="() => Go(1)" aria-label="First page" title="First page">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5" /><path d="M18 17l-5-5 5-5" /></svg>
-    </button>
-    <button type="button" class="co-pager-btn" disabled="@(Page <= 1)"
-            @onclick="() => Go(Page - 1)" aria-label="Previous page" title="Previous page">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-    </button>
-    <span class="co-pager-pos">@Page of @TotalPages <span class="co-pager-count">(@TotalCount @Noun)</span></span>
-    <button type="button" class="co-pager-btn" disabled="@(Page >= TotalPages)"
-            @onclick="() => Go(Page + 1)" aria-label="Next page" title="Next page">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-    </button>
-    <button type="button" class="co-pager-btn" disabled="@(Page >= TotalPages)"
-            @onclick="() => Go(TotalPages)" aria-label="Last page" title="Last page">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 17l5-5-5-5" /><path d="M6 17l5-5-5-5" /></svg>
-    </button>
+    <div class="co-pager-left">
+        @if (OnPageSizeChange.HasDelegate)
+        {
+            <select class="co-pager-size" value="@PageSize" @onchange="OnSizeChanged" aria-label="Rows per page">
+                @foreach (var s in PageSizeOptions)
+                {
+                    <option value="@s">@s</option>
+                }
+            </select>
+        }
+    </div>
+    <div class="co-pager-right">
+        <span class="co-pager-count">@RangeStart–@RangeEnd of @TotalCount</span>
+        <button type="button" class="co-pager-btn" disabled="@(Page <= 1)"
+                @onclick="() => Go(1)" aria-label="First page" title="First page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 17l-5-5 5-5" /><path d="M18 17l-5-5 5-5" /></svg>
+        </button>
+        <button type="button" class="co-pager-btn" disabled="@(Page <= 1)"
+                @onclick="() => Go(Page - 1)" aria-label="Previous page" title="Previous page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        </button>
+        <span class="co-pager-pos">Page @Page of @TotalPages</span>
+        <button type="button" class="co-pager-btn" disabled="@(Page >= TotalPages)"
+                @onclick="() => Go(Page + 1)" aria-label="Next page" title="Next page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+        </button>
+        <button type="button" class="co-pager-btn" disabled="@(Page >= TotalPages)"
+                @onclick="() => Go(TotalPages)" aria-label="Last page" title="Last page">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 17l5-5-5-5" /><path d="M6 17l5-5-5-5" /></svg>
+        </button>
+    </div>
 </div>
+}
 
 @code {
     [Parameter, EditorRequired] public int Page { get; set; }
     [Parameter, EditorRequired] public int TotalPages { get; set; }
     [Parameter, EditorRequired] public int TotalCount { get; set; }
-    /// <summary>Singular noun for the count, e.g. "result", "GTIN". Pluralized with "s".</summary>
-    [Parameter] public string ResultNoun { get; set; } = "result";
-    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+    /// <summary>Current page size; drives the item range and is offered in the size selector.</summary>
+    [Parameter] public int PageSize { get; set; }
 
-    private string Noun => TotalCount == 1 ? ResultNoun : ResultNoun + "s";
+    /// <summary>1-based index of the first item on the current page; 0 when empty.</summary>
+    private int RangeStart => TotalCount <= 0 ? 0 : (Page - 1) * PageSize + 1;
+    /// <summary>1-based index of the last item on the current page (clamped to TotalCount); 0 when empty.</summary>
+    private int RangeEnd => TotalCount <= 0 ? 0 : Math.Min(Page * PageSize, TotalCount);
+    /// <summary>Options offered in the inline size selector (only rendered when OnPageSizeChange is wired).</summary>
+    [Parameter] public int[] PageSizeOptions { get; set; } = new[] { 10, 15, 25, 50 };
+    [Parameter] public EventCallback<int> OnPageChange { get; set; }
+    [Parameter] public EventCallback<int> OnPageSizeChange { get; set; }
+    /// <summary>Back-compat only — no longer used for display (R4 dropped the noun).</summary>
+    [Parameter] public string ResultNoun { get; set; } = "result";
 
     private async Task Go(int target)
     {
         var clamped = Math.Clamp(target, 1, Math.Max(1, TotalPages));
         if (clamped != Page && OnPageChange.HasDelegate)
             await OnPageChange.InvokeAsync(clamped);
+    }
+
+    private async Task OnSizeChanged(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out var size) && size != PageSize && OnPageSizeChange.HasDelegate)
+            await OnPageSizeChange.InvokeAsync(size);
     }
 }

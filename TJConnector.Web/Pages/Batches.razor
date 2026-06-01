@@ -88,7 +88,20 @@
                 }
                 else
                 {
-                    <table class="table table-sm table-xs-font table-hover mb-0 co-table">
+                    @* TB3 (R7): table-layout:fixed + colgroup so columns never drift
+                       across pages. TB1: ID column fixed at ~3-digit width. *@
+                    <table class="table table-sm table-xs-font table-hover mb-0 co-table co-table-fixed">
+                        <colgroup>
+                            <col class="cg-id" />
+                            <col class="cg-type" />
+                            <col class="cg-gtin" />
+                            <col class="cg-num" />
+                            <col class="cg-desc" />
+                            <col class="cg-user" />
+                            <col class="cg-date" />
+                            <col class="cg-status" />
+                            <col class="cg-actions" />
+                        </colgroup>
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th class="col-id">ID</th>
@@ -158,7 +171,7 @@
                         @* A1: unified CalmOps pager |‹ ‹ n of m (x batches) › ›|. *@
                         <div class="co-pager-footer">
                             <CoPager Page="batchPage" TotalPages="BatchTotalPages"
-                                     TotalCount="@(batches?.Count() ?? 0)" ResultNoun="batch"
+                                     TotalCount="@(batches?.Count() ?? 0)" PageSize="BatchPageSize"
                                      OnPageChange="@(p => batchPage = p)" />
                         </div>
                     }
@@ -217,7 +230,19 @@
                 }
                 else
                 {
-                    <table class="table table-sm table-xs-font mb-0 co-table">
+                    @* TB1/TB3 (R7): fixed layout + colgroup on the orders table too, with
+                       the ID column pinned to a ~3-digit width so it doesn't shift between
+                       pages of 1- vs 2-digit ids. *@
+                    <table class="table table-sm table-xs-font mb-0 co-table co-table-fixed co-table-orders">
+                        <colgroup>
+                            <col class="cg-id" />
+                            <col class="cg-guid" />
+                            <col class="cg-num" />
+                            <col class="cg-num" />
+                            <col class="cg-status" />
+                            <col class="cg-date" />
+                            <col class="cg-msg" />
+                        </colgroup>
                         <thead class="table-light sticky-top">
                             <tr>
                                 <th>ID</th>
@@ -266,7 +291,7 @@
                         @* A1: unified CalmOps pager |‹ ‹ n of m (x orders) › ›|. *@
                         <div class="co-pager-footer">
                             <CoPager Page="orderPage" TotalPages="OrderTotalPages"
-                                     TotalCount="@(selectedBatchDto.Orders?.Count ?? 0)" ResultNoun="order"
+                                     TotalCount="@(selectedBatchDto.Orders?.Count ?? 0)" PageSize="OrderPageSize"
                                      OnPageChange="@(p => orderPage = p)" />
                         </div>
                     }
@@ -331,7 +356,7 @@
                     <label class="form-label form-label-sm" for="fld-count">
                         Codes Count <span class="required-mark" aria-hidden="true">*</span>
                     </label>
-                    <input id="fld-count" type="number" class="form-control form-control-sm co-input @(!string.IsNullOrEmpty(codesCountError) ? "is-invalid" : "")"
+                    <input id="fld-count" type="number" class="form-control form-control-sm co-input co-no-spinner @(!string.IsNullOrEmpty(codesCountError) ? "is-invalid" : "")"
                            min="1"
                            value="@codesCountInput"
                            @oninput="OnCodesCountInput"
@@ -345,36 +370,59 @@
                 <!-- Factory -->
                 <div class="mb-2">
                     <label class="form-label form-label-sm" for="fld-factory">Factory</label>
-                    <select id="fld-factory" class="form-select form-select-sm co-select"
-                            disabled="@((factories?.Count() ?? 0) <= 1)"
-                            @bind="selectedFactoryId">
-                        <option value="0">— Select Factory —</option>
-                        @foreach (var f in factories ?? Enumerable.Empty<Factory>())
-                        {
-                            <option value="@f.Id">@f.Name</option>
-                        }
-                    </select>
+                    @* OC1 (R7): when exactly one factory exists it is auto-selected. We
+                       USED to render a DISABLED native <select> here. The stray "^" carets
+                       the user saw were NOT data — the only factory name is the clean
+                       "DefaulFactory" (verified in the DB) — they were the browser's own
+                       chrome on a disabled, appearance:none <select> bleeding through. The
+                       robust fix is to not render a disabled select at all for the single
+                       option: show a styled read-only field so the box cleanly shows the
+                       auto-selected factory. The bound value (selectedFactoryId, set in
+                       ShowOrderCodesModal) is unchanged. Multi-factory keeps the dropdown. *@
                     @if ((factories?.Count() ?? 0) == 1)
                     {
+                        var only = factories!.First();
+                        <input id="fld-factory" type="text" readonly
+                               class="form-control form-control-sm co-input co-readonly-field"
+                               value="@only.Name" aria-label="Factory (auto-selected)" />
                         <small class="text-muted">Only one factory available — auto-selected.</small>
+                    }
+                    else
+                    {
+                        <select id="fld-factory" class="form-select form-select-sm co-select"
+                                @bind="selectedFactoryId">
+                            <option value="0">— Select Factory —</option>
+                            @foreach (var f in factories ?? Enumerable.Empty<Factory>())
+                            {
+                                <option value="@f.Id">@f.Name</option>
+                            }
+                        </select>
                     }
                 </div>
 
                 <!-- Marking Line -->
                 <div class="mb-2">
                     <label class="form-label form-label-sm" for="fld-line">Marking Line</label>
-                    <select id="fld-line" class="form-select form-select-sm co-select"
-                            disabled="@((markingLines?.Count() ?? 0) <= 1)"
-                            @bind="selectedMarkingLineId">
-                        <option value="0">— Select Line —</option>
-                        @foreach (var ml in markingLines ?? Enumerable.Empty<MarkingLine>())
-                        {
-                            <option value="@ml.Id">@ml.Name</option>
-                        }
-                    </select>
+                    @* OC1 (R7): same read-only treatment as Factory for the single-line
+                       auto-selected case (avoids the disabled-<select> caret artifact). *@
                     @if ((markingLines?.Count() ?? 0) == 1)
                     {
+                        var onlyLine = markingLines!.First();
+                        <input id="fld-line" type="text" readonly
+                               class="form-control form-control-sm co-input co-readonly-field"
+                               value="@onlyLine.Name" aria-label="Marking line (auto-selected)" />
                         <small class="text-muted">Only one line available — auto-selected.</small>
+                    }
+                    else
+                    {
+                        <select id="fld-line" class="form-select form-select-sm co-select"
+                                @bind="selectedMarkingLineId">
+                            <option value="0">— Select Line —</option>
+                            @foreach (var ml in markingLines ?? Enumerable.Empty<MarkingLine>())
+                            {
+                                <option value="@ml.Id">@ml.Name</option>
+                            }
+                        </select>
                     }
                 </div>
 
@@ -409,7 +457,7 @@
     private IEnumerable<MarkingLine>? markingLines;
 
     // ── Pagination ────────────────────────────────────────────────────────
-    private const int BatchPageSize = 20;
+    private const int BatchPageSize = 15;   // R7: Order Batches Show = 15
     private const int OrderPageSize = 5;
     private int batchPage = 1;
     private int orderPage = 1;
@@ -435,7 +483,9 @@
     private int refreshInterval = 5;
 
     // ── Split pane ────────────────────────────────────────────────────────
-    private double topPct = 45;
+    // R5 T-panes: raised default 45→55 so the batch master list isn't cramped
+    // now that the wrapper fills the full viewport height. Drag still overrides.
+    private double topPct = 55;
     private DotNetObjectReference<Batches>? _selfRef;
 
     // ── Modal state ───────────────────────────────────────────────────────

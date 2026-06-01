@@ -8,6 +8,14 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+        // Mobile only: serve the full unscaled DESKTOP layout (fit-to-width, pan/zoom)
+        // instead of adapting to the phone. Desktop browsers keep width=device-width.
+        if (/Mobi|Android|iPhone|iPad|iPod|IEMobile|Opera Mini|Windows Phone/i.test(navigator.userAgent)) {
+            var _vp = document.querySelector('meta[name="viewport"]');
+            if (_vp) _vp.setAttribute('content', 'width=1280');
+        }
+    </script>
     <base href="~/" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -58,14 +66,6 @@
             width: 360px;
             max-width: 92vw;
             padding: 2.25rem 2.5rem;
-        }
-        .login-card .login-title {
-            margin: 0 0 1.5rem;
-            text-align: center;
-            font-size: 1.35rem;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-            color: var(--text-strong);
         }
     </style>
     <link rel="icon" type="image/svg+xml" href="brand/favicon.svg" asp-append-version="true" />

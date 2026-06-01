@@ -280,8 +280,14 @@ body {
        <button class="co-pager-btn" aria-label="Next page">{chevron-right svg}</button>
        <button class="co-pager-btn" aria-label="Last page">{chevrons-right svg}</button>
      </div>                                                                        */
-.co-pager { display: inline-flex; align-items: center; gap: 0.4rem; justify-content: center; }
-.co-pager-footer { display: flex; justify-content: center; margin-top: 0.75rem; }
+/* R6: full-width space-between bar (Carbon footer model). LEFT cluster = the
+   page-size <select> (resizable tables only; dormant on TJ's fixed-size tables);
+   RIGHT cluster = item range readout then nav arrows. No dropdown → left cluster
+   empty, right group flush-right (Material style). */
+.co-pager { display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 0.75rem; }
+.co-pager .co-pager-left { display: inline-flex; align-items: center; gap: 0.4rem; }
+.co-pager .co-pager-right { display: inline-flex; align-items: center; gap: 0.4rem; }
+.co-pager-footer { display: flex; width: 100%; margin-top: 0.75rem; }
 .co-pager .co-pager-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px;
     padding: 0; border: 1px solid var(--border); background: var(--bg-surface); border-radius: var(--radius-sm); cursor: pointer;
     color: var(--text-muted); transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease; }
@@ -291,7 +297,16 @@ body {
 .co-pager .co-pager-btn:disabled { opacity: 0.35; cursor: default; }
 .co-pager .co-pager-pos { font-size: var(--fs-meta); color: var(--text); font-variant-numeric: tabular-nums;
     white-space: nowrap; padding: 0 0.4rem; min-width: 6rem; text-align: center; }
-.co-pager .co-pager-pos .co-pager-count { color: var(--text-faint); }
+/* R6: range readout is a standalone child of the right cluster (was nested in
+   .co-pager-pos). Muted, sits before the nav arrows. */
+.co-pager .co-pager-count { font-size: var(--fs-meta); color: var(--text-faint);
+    font-variant-numeric: tabular-nums; white-space: nowrap; padding: 0 0.4rem; }
+/* R6: page-size <select> in the left cluster (dormant on TJ's fixed-size tables). */
+.co-pager .co-pager-size {
+    margin: 0; padding: 0.05rem 0.3rem; border: 1px solid var(--border);
+    border-radius: 4px; font: inherit; font-size: var(--fs-meta); background: var(--bg-surface);
+    color: var(--text); font-variant-numeric: tabular-nums; vertical-align: baseline; }
+.co-pager .co-pager-size:focus-visible { outline: var(--focus-outline); outline-offset: 1px; }
 .co-pagesize { display: inline-flex; align-items: center; gap: 0.35rem; font-size: var(--fs-meta); color: var(--text-muted); }
 .co-pagesize select { padding: 0.15rem 0.35rem; border: 1px solid var(--border); border-radius: 4px;
     font: inherit; font-size: var(--fs-meta); background: var(--bg-surface); color: var(--text); }

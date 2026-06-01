@@ -31,13 +31,13 @@
     --accent-hover:    #1d4ed8;
     --accent-soft:     #eff4ff;   /* selected-row tint, icon hover bg */
 
-    /* Sidebar (near-black slate — the one dark surface) */
-    --sidebar-bg:          #111827;
-    --sidebar-border:      #1f2937;
+    /* Sidebar — R8: calm deep umber, rhymes with the #b6522d logo */
+    --sidebar-bg:          #2c1a12;
+    --sidebar-border:      #43271a;
     --sidebar-text:        #cbd5e1;
     --sidebar-text-strong: #f1f5f9;
     --sidebar-text-faint:  #6b7280;
-    --sidebar-active-bar:  #2563eb;   /* 3px inset accent on active nav link — single canonical accent */
+    --sidebar-active-bar:  #c2663f;   /* 3px inset accent on active nav link (logo-terracotta) */
     --sidebar-danger:      #f87171;   /* logout hover */
 
     /* ---- Semantic status colors (badges, rows, alerts) -------------------- */

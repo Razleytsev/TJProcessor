@@ -72,9 +72,8 @@
 
 .sidebar .nav-link.active,
 .sidebar ::deep .nav-link.active {
-    /* Single canonical accent #2563eb — soft tint fill + 3px inset accent bar,
-       unified with Changer's active-nav treatment. */
-    background-color: rgba(37, 99, 235, 0.14);
+    /* R8: terracotta active tint to rhyme with the #b6522d logo (was blue). */
+    background-color: rgba(182, 82, 45, 0.18);
     color: var(--sidebar-text-strong);
     font-weight: 500;
     box-shadow: inset 3px 0 0 var(--sidebar-active-bar, #2563eb);
