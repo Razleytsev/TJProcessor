@@ -364,12 +364,6 @@ FodyWeavers.xsd
 /TJConnector.Api/appsettings.json
 /TJConnector.StateSystem/ContainerContentQuery.sql
 /TJConnector.StateSystem/ContainerInfoQuery.sql
-/TJConnector.StateSystem/ContainerInfoQuery.sql
-/TJConnector.StateSystem/ContainerContentQuery.sql
-/TJConnector.StateSystem/ContainerContentQuery.sql
-/TJConnector.Api/appsettings.json
-/TJConnector.StateSystem/ContainerContentQuery.sql
-/TJConnector.StateSystem/ContainerInfoQuery.sql
 
 # Claude Code + Playwright MCP transient files
 .claude/
@@ -377,3 +371,16 @@ FodyWeavers.xsd
 
 # Local working-copy code emission dumps
 markingCodeemissioncodes*.txt
+
+# Workflow output (doc generation drafts, kept local-only)
+docs/generated/
+
+# Added 2026-06-09 — cleanup playbook gitignore hardening
+.superpowers/
+/*.png
+snapshot-root.md
+.idea/
+*.trx
+.env
+.env.*
+temp_publish*/
